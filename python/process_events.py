@@ -7,6 +7,8 @@ import pandas as pd
 import uproot
 
 from make_plots import *
+from flatten_dist import *
+from pre_process import *
 
 import concurrent.futures
 import multiprocessing
@@ -83,8 +85,8 @@ def process_qcd_events(array):
     x_data[0:array_0.shape[0],0] = np.zeros(array_0.shape[0])
     x_data[array_0.shape[0]:array_0.shape[0]+array_1.shape[0],0] = np.zeros(array_1.shape[0])
 
-    x_data[0:array_0.shape[0],1] = np.ones(array_0.shape[0])
-    x_data[array_0.shape[0]:array_0.shape[0]+array_1.shape[0],1] = np.ones(array_1.shape[0])
+    x_data[0:array_0.shape[0],1] = np.multiply( np.array([*array_0['mcEventWeight'].to_numpy()]), 20000000*np.random.rand(array_0.shape[0]) + 100000000)
+    x_data[array_0.shape[0]:array_0.shape[0]+array_1.shape[0],1] = np.multiply( np.array([*array_1['mcEventWeight'].to_numpy()]), 20000000*np.random.rand(array_1.shape[0]) + 100000000)
 
     x_data[0:array_0.shape[0],2] = np.ones(array_0.shape[0])
     x_data[array_0.shape[0]:array_0.shape[0]+array_1.shape[0],2] = np.ones(array_1.shape[0])
@@ -98,14 +100,26 @@ def process_qcd_events(array):
     x_data[0:array_0.shape[0],5] = np.array([*array_0['jet_phi'].to_numpy()])
     x_data[array_0.shape[0]:array_0.shape[0]+array_1.shape[0],5] = np.array([*array_1['jet_phi'].to_numpy()])
   
+
+    clus_sort_index_0 = np.zeros(num_max_constits)
+    track_sort_index_0 = np.zeros(num_max_constits)
+    clus_sort_index_1 = np.zeros(num_max_tracks)
+    track_sort_index_1 = np.zeros(num_max_tracks)
+
+
     #print(array_0.clus_pt.apply(lambda x: len(x)))
     counter_cluster=6
     for item in (array_0.loc[:,'clus_pt':'clusTime']).columns.values:
         array_0[item] = (array_0.apply(lambda x: x[item][x['cluster_jetIndex'] == int(x['jet_index'])], axis=1))
         #SORRY ABOUT THIS IT IS BAD CODE
         array_0[item] = (array_0[item].apply(lambda x: np.multiply(np.resize(x,num_max_constits),np.concatenate([np.ones(len(x)*(len(x) <= num_max_constits) + num_max_constits*(len(x) > num_max_constits)),np.full((num_max_constits-len(x))*(len(x) < num_max_constits),np.nan, dtype='float32')]) )) ) 
-        array_0_np = np.array([*array_0[item].to_numpy()])
-        x_data[0:array_0.shape[0],slice(counter_cluster,counter_cluster+((num_max_constits-1)*num_cluster_variables)+1,num_cluster_variables)] = array_0_np
+        if item == "clus_pt":
+            array_0_np = np.array([*array_0[item].to_numpy()])
+            clus_sort_index_0 = np.argsort(array_0_np)
+        axis = 1
+        index = list(np.ix_(*[np.arange(clus_sort_index_0) for clus_sort_index_0 in array_0_np.shape]))
+        index[axis] = (-array_0_np).argsort(axis)
+        x_data[0:array_0.shape[0],slice(counter_cluster,counter_cluster+((num_max_constits-1)*num_cluster_variables)+1,num_cluster_variables)] = array_0_np[index]
         #print(array_0[item].to_numpy().shape)
         #print(x_data[:,slice(0,112,28)].shape)
         #print((array_0[item].to_numpy()).shape)
@@ -120,8 +134,13 @@ def process_qcd_events(array):
         array_1[item] = (array_1.apply(lambda x: x[item][x['cluster_jetIndex'] == int(x['jet_index'])], axis=1))
         #SORRY ABOUT THIS IT IS BAD CODE
         array_1[item] = (array_1[item].apply(lambda x: np.multiply(np.resize(x,num_max_constits),np.concatenate([np.ones(len(x)*(len(x) <= num_max_constits) + num_max_constits*(len(x) > num_max_constits)),np.full((num_max_constits-len(x))*(len(x) < num_max_constits),np.nan, dtype='float32')]) )) ) 
-        array_1_np = np.array([*array_1[item].to_numpy()])
-        x_data[array_0.shape[0]:array_0.shape[0]+array_1.shape[0],slice(counter_cluster,counter_cluster+((num_max_constits-1)*num_cluster_variables)+1,num_cluster_variables)] = array_1_np
+        if item == "clus_pt":
+            array_1_np = np.array([*array_1[item].to_numpy()])
+            clus_sort_index_1 = np.argsort(array_1_np)
+        axis = 1
+        index = list(np.ix_(*[np.arange(clus_sort_index_1) for clus_sort_index_1 in array_1_np.shape]))
+        index[axis] = (-array_1_np).argsort(axis)
+        x_data[array_0.shape[0]:array_0.shape[0]+array_1.shape[0],slice(counter_cluster,counter_cluster+((num_max_constits-1)*num_cluster_variables)+1,num_cluster_variables)] = array_1_np[index]
         counter_cluster = counter_cluster+1
 
     counter_tracks=0
@@ -131,14 +150,24 @@ def process_qcd_events(array):
         array_0[item] = (array_0.apply(lambda x: x[item][x['nn_track_jetIndex'] == int(x['jet_index'])], axis=1))
 
         array_0[item] = (array_0[item].apply(lambda x: np.multiply(np.resize(x,num_max_tracks),np.concatenate([np.ones(len(x)*(len(x) <= num_max_tracks) + num_max_tracks*(len(x) > num_max_tracks)),np.full((num_max_tracks-len(x))*(len(x) < num_max_tracks),np.nan, dtype='float32')]) )) ) 
-        array_0_np = np.array([*array_0[item].to_numpy()])
-        x_data[0:array_0.shape[0],slice(counter_tracks+max_counter_cluster,max_counter_cluster+counter_tracks+((num_max_tracks-1)*num_track_variables)+1,num_track_variables)] = array_0_np
+        if item == "nn_track_pt":
+            array_0_np = np.array([*array_0[item].to_numpy()])
+            track_sort_index_0 = np.argsort(array_0_np)
+        axis = 1
+        index = list(np.ix_(*[np.arange(track_sort_index_0) for track_sort_index_0 in array_0_np.shape]))
+        index[axis] = (-array_0_np).argsort(axis)
+        x_data[0:array_0.shape[0],slice(counter_tracks+max_counter_cluster,max_counter_cluster+counter_tracks+((num_max_tracks-1)*num_track_variables)+1,num_track_variables)] = array_0_np[index]
 
         array_1[item] = (array_1.apply(lambda x: x[item][x['nn_track_jetIndex'] == int(x['jet_index'])], axis=1))
 
         array_1[item] = (array_1[item].apply(lambda x: np.multiply(np.resize(x,num_max_tracks),np.concatenate([np.ones(len(x)*(len(x) <= num_max_tracks) + num_max_tracks*(len(x) > num_max_tracks)),np.full((num_max_tracks-len(x))*(len(x) < num_max_tracks),np.nan, dtype='float32')]) )) ) 
-        array_1_np = np.array([*array_1[item].to_numpy()])
-        x_data[array_0.shape[0]:array_0.shape[0]+array_1.shape[0],slice(counter_tracks++max_counter_cluster,max_counter_cluster+counter_tracks+((num_max_tracks-1)*num_track_variables)+1,num_track_variables)] = array_1_np
+        if item == "nn_track_pt":
+            array_1_np = np.array([*array_1[item].to_numpy()])
+            track_sort_index_1 = np.argsort(array_1_np)
+        axis = 1
+        index = list(np.ix_(*[np.arange(track_sort_index_1) for track_sort_index_1 in array_1_np.shape]))
+        index[axis] = (-array_1_np).argsort(axis)
+        x_data[array_0.shape[0]:array_0.shape[0]+array_1.shape[0],slice(counter_tracks++max_counter_cluster,max_counter_cluster+counter_tracks+((num_max_tracks-1)*num_track_variables)+1,num_track_variables)] = array_1_np[index]
 
         counter_tracks = counter_tracks + 1
      
@@ -165,7 +194,7 @@ def process_qcd_events(array):
     #print( (array_0.loc[:,'clus_pt':'clusTime']).columns.values + (array_0.loc[:,'nn_track_pt':'nn_track_SCTHits']).columns.values + (array_0.loc[:,'nn_MSeg_etaPos':'nn_MSeg_t0']).columns.values ) 
     #print( (array_0.loc[:,'clus_pt':'clusTime']).columns.values)
 
-    initial_names = ['label','mcWeight','flatWeight','jet_pt','jet_eta','jet_phi']
+    initial_names = ['label','mcEventWeight','flatWeight','jet_pt','jet_eta','jet_phi']
 
     constit_cols = ((array_0.loc[:,'clus_pt':'clusTime']).columns.values)
     constit_names = []
@@ -250,6 +279,9 @@ def process_bib_events(array):
 
     x_data[0:array.shape[0],5] = np.array([*array['jet_phi_hlt'].to_numpy()])
 
+    clus_sort_index = np.zeros(num_max_constits)
+    track_sort_index = np.zeros(num_max_constits)
+
   
     #print(array.clus_pt.apply(lambda x: len(x)))
     counter_cluster=6
@@ -257,8 +289,13 @@ def process_bib_events(array):
         array[item] = (array.apply(lambda x: x[item][x['cluster_jetIndex'] == int(x['test_0'])], axis=1))
         #SORRY ABOUT THIS IT IS BAD CODE
         array[item] = (array[item].apply(lambda x: np.multiply(np.resize(x,num_max_constits),np.concatenate([np.ones(len(x)*(len(x) <= num_max_constits) + num_max_constits*(len(x) > num_max_constits)),np.full((num_max_constits-len(x))*(len(x) < num_max_constits),np.nan, dtype='float32')]) )) ) 
-        array_np = np.array([*array[item].to_numpy()])
-        x_data[0:array.shape[0],slice(counter_cluster,counter_cluster+((num_max_constits-1)*num_cluster_variables)+1,num_cluster_variables)] = array_np
+        if item == "clus_pt":
+            array_np = np.array([*array[item].to_numpy()])
+            clus_sort_index = np.argsort(array_np)
+        axis = 1
+        index = list(np.ix_(*[np.arange(clus_sort_index) for clus_sort_index in array_np.shape]))
+        index[axis] = (-array_np).argsort(axis)
+        x_data[0:array.shape[0],slice(counter_cluster,counter_cluster+((num_max_constits-1)*num_cluster_variables)+1,num_cluster_variables)] = array_np[index]
         counter_cluster = counter_cluster+1
 
     counter_tracks=0
@@ -268,8 +305,13 @@ def process_bib_events(array):
         array[item] = (array.apply(lambda x: x[item][x['nn_track_jetIndex'] == int(x['test_0'])], axis=1))
 
         array[item] = (array[item].apply(lambda x: np.multiply(np.resize(x,num_max_tracks),np.concatenate([np.ones(len(x)*(len(x) <= num_max_tracks) + num_max_tracks*(len(x) > num_max_tracks)),np.full((num_max_tracks-len(x))*(len(x) < num_max_tracks),np.nan, dtype='float32')]) )) ) 
-        array_np = np.array([*array[item].to_numpy()])
-        x_data[0:array.shape[0],slice(counter_tracks+max_counter_cluster,max_counter_cluster+counter_tracks+((num_max_tracks-1)*num_track_variables)+1,num_track_variables)] = array_np
+        if item == "nn_track_pt":
+            array_np = np.array([*array[item].to_numpy()])
+            track_sort_index = np.argsort(array_np)
+        axis = 1
+        index = list(np.ix_(*[np.arange(track_sort_index) for track_sort_index in array_np.shape]))
+        index[axis] = (-array_np).argsort(axis)
+        x_data[0:array.shape[0],slice(counter_tracks+max_counter_cluster,max_counter_cluster+counter_tracks+((num_max_tracks-1)*num_track_variables)+1,num_track_variables)] = array_np[index]
 
         counter_tracks = counter_tracks + 1
      
@@ -290,7 +332,7 @@ def process_bib_events(array):
     #print( (array.loc[:,'clus_pt':'clusTime']).columns.values + (array.loc[:,'nn_track_pt':'nn_track_SCTHits']).columns.values + (array.loc[:,'nn_MSeg_etaPos':'nn_MSeg_t0']).columns.values ) 
     #print( (array.loc[:,'clus_pt':'clusTime']).columns.values)
 
-    initial_names = ['label','mcWeight','flatWeight','jet_pt','jet_eta','jet_phi']
+    initial_names = ['label','mcEventWeight','flatWeight','jet_pt','jet_eta','jet_phi']
 
     constit_cols = ((array.loc[:,'clus_pt':'clusTime']).columns.values)
     constit_names = []
@@ -408,15 +450,25 @@ def process_signal_events(array):
 
     x_data[0:array_0.shape[0],5] = np.array([*array_0['jet_phi_llp'].to_numpy()])
     x_data[array_0.shape[0]:array_0.shape[0]+array_1.shape[0],5] = np.array([*array_1['jet_phi_llp'].to_numpy()])
+
   
+    clus_sort_index_0 = np.zeros(num_max_constits)
+    track_sort_index_0 = np.zeros(num_max_constits)
+    clus_sort_index_1 = np.zeros(num_max_tracks)
+    track_sort_index_1 = np.zeros(num_max_tracks)
     #print(array_0.clus_pt.apply(lambda x: len(x)))
     counter_cluster=6
     for item in (array_0.loc[:,'clus_pt':'clusTime']).columns.values:
         array_0[item] = (array_0.apply(lambda x: x[item][x['cluster_jetIndex'] == int(x['test_0'])], axis=1))
         #SORRY ABOUT THIS IT IS BAD CODE
         array_0[item] = (array_0[item].apply(lambda x: np.multiply(np.resize(x,num_max_constits),np.concatenate([np.ones(len(x)*(len(x) <= num_max_constits) + num_max_constits*(len(x) > num_max_constits)),np.full((num_max_constits-len(x))*(len(x) < num_max_constits),np.nan, dtype='float32')]) )) ) 
-        array_0_np = np.array([*array_0[item].to_numpy()])
-        x_data[0:array_0.shape[0],slice(counter_cluster,counter_cluster+((num_max_constits-1)*num_cluster_variables)+1,num_cluster_variables)] = array_0_np
+        if item == "clus_pt":
+            array_0_np = np.array([*array_0[item].to_numpy()])
+            clus_sort_index_0 = np.argsort(array_0_np)
+        axis = 1
+        index = list(np.ix_(*[np.arange(clus_sort_index_0) for clus_sort_index_0 in array_0_np.shape]))
+        index[axis] = (-array_0_np).argsort(axis)
+        x_data[0:array_0.shape[0],slice(counter_cluster,counter_cluster+((num_max_constits-1)*num_cluster_variables)+1,num_cluster_variables)] = array_0_np[index]
         #print(array_0[item].to_numpy().shape)
         #print(x_data[:,slice(0,112,28)].shape)
         #print((array_0[item].to_numpy()).shape)
@@ -431,8 +483,13 @@ def process_signal_events(array):
         array_1[item] = (array_1.apply(lambda x: x[item][x['cluster_jetIndex'] == int(x['test_1'])], axis=1))
         #SORRY ABOUT THIS IT IS BAD CODE
         array_1[item] = (array_1[item].apply(lambda x: np.multiply(np.resize(x,num_max_constits),np.concatenate([np.ones(len(x)*(len(x) <= num_max_constits) + num_max_constits*(len(x) > num_max_constits)),np.full((num_max_constits-len(x))*(len(x) < num_max_constits),np.nan, dtype='float32')]) )) ) 
-        array_1_np = np.array([*array_1[item].to_numpy()])
-        x_data[array_0.shape[0]:array_0.shape[0]+array_1.shape[0],slice(counter_cluster,counter_cluster+((num_max_constits-1)*num_cluster_variables)+1,num_cluster_variables)] = array_1_np
+        if item == "clus_pt":
+            array_1_np = np.array([*array_1[item].to_numpy()])
+            clus_sort_index_1 = np.argsort(array_1_np)
+        axis = 1
+        index = list(np.ix_(*[np.arange(clus_sort_index_1) for clus_sort_index_1 in array_1_np.shape]))
+        index[axis] = (-array_1_np).argsort(axis)
+        x_data[array_0.shape[0]:array_0.shape[0]+array_1.shape[0],slice(counter_cluster,counter_cluster+((num_max_constits-1)*num_cluster_variables)+1,num_cluster_variables)] = array_1_np[index]
         counter_cluster = counter_cluster+1
 
     counter_tracks=0
@@ -442,14 +499,24 @@ def process_signal_events(array):
         array_0[item] = (array_0.apply(lambda x: x[item][x['nn_track_jetIndex'] == int(x['test_0'])], axis=1))
 
         array_0[item] = (array_0[item].apply(lambda x: np.multiply(np.resize(x,num_max_tracks),np.concatenate([np.ones(len(x)*(len(x) <= num_max_tracks) + num_max_tracks*(len(x) > num_max_tracks)),np.full((num_max_tracks-len(x))*(len(x) < num_max_tracks),np.nan, dtype='float32')]) )) ) 
-        array_0_np = np.array([*array_0[item].to_numpy()])
-        x_data[0:array_0.shape[0],slice(counter_tracks+max_counter_cluster,max_counter_cluster+counter_tracks+((num_max_tracks-1)*num_track_variables)+1,num_track_variables)] = array_0_np
+        if item == "nn_track_pt":
+            array_0_np = np.array([*array_0[item].to_numpy()])
+            track_sort_index_0 = np.argsort(array_0_np)
+        axis = 1
+        index = list(np.ix_(*[np.arange(track_sort_index_0) for track_sort_index_0 in array_0_np.shape]))
+        index[axis] = (-array_0_np).argsort(axis)
+        x_data[0:array_0.shape[0],slice(counter_tracks+max_counter_cluster,max_counter_cluster+counter_tracks+((num_max_tracks-1)*num_track_variables)+1,num_track_variables)]  = array_0_np[index]
 
         array_1[item] = (array_1.apply(lambda x: x[item][x['nn_track_jetIndex'] == int(x['test_1'])], axis=1))
 
         array_1[item] = (array_1[item].apply(lambda x: np.multiply(np.resize(x,num_max_tracks),np.concatenate([np.ones(len(x)*(len(x) <= num_max_tracks) + num_max_tracks*(len(x) > num_max_tracks)),np.full((num_max_tracks-len(x))*(len(x) < num_max_tracks),np.nan, dtype='float32')]) )) ) 
-        array_1_np = np.array([*array_1[item].to_numpy()])
-        x_data[array_0.shape[0]:array_0.shape[0]+array_1.shape[0],slice(counter_tracks++max_counter_cluster,max_counter_cluster+counter_tracks+((num_max_tracks-1)*num_track_variables)+1,num_track_variables)] = array_1_np
+        if item == "nn_track_pt":
+            array_1_np = np.array([*array_1[item].to_numpy()])
+            track_sort_index_1 = np.argsort(array_1_np)
+        axis = 1
+        index = list(np.ix_(*[np.arange(track_sort_index_1) for track_sort_index_1 in array_1_np.shape]))
+        index[axis] = (-array_1_np).argsort(axis)
+        x_data[array_0.shape[0]:array_0.shape[0]+array_1.shape[0],slice(counter_tracks+max_counter_cluster,max_counter_cluster+counter_tracks+((num_max_tracks-1)*num_track_variables)+1,num_track_variables)]  = array_1_np[index]
 
         counter_tracks = counter_tracks + 1
      
@@ -476,7 +543,7 @@ def process_signal_events(array):
     #print( (array_0.loc[:,'clus_pt':'clusTime']).columns.values + (array_0.loc[:,'nn_track_pt':'nn_track_SCTHits']).columns.values + (array_0.loc[:,'nn_MSeg_etaPos':'nn_MSeg_t0']).columns.values ) 
     #print( (array_0.loc[:,'clus_pt':'clusTime']).columns.values)
 
-    initial_names = ['label','mcWeight','flatWeight','jet_pt','jet_eta','jet_phi']
+    initial_names = ['label','mcEventWeight','flatWeight','jet_pt','jet_eta','jet_phi']
 
     constit_cols = ((array_0.loc[:,'clus_pt':'clusTime']).columns.values)
     constit_names = []
@@ -595,7 +662,9 @@ for arrays in uproot.iterate("/data/fcormier/calRatio/fullRun2/output/signal-may
 
 
 #print(df)
-plot_vars(df)
+#plot_vars(df)
+df = flatten(df, 40000, 200000, 20)
+pre_process(df)
 
     #print(arrays.jet_eta)
     #print(arrays[arrays['HLT_jet_TAU60'].apply(lambda x: sum(x)) > 0])
