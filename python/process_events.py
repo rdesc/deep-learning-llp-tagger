@@ -115,11 +115,13 @@ def process_qcd_events(array):
         array_0[item] = (array_0[item].apply(lambda x: np.multiply(np.resize(x,num_max_constits),np.concatenate([np.ones(len(x)*(len(x) <= num_max_constits) + num_max_constits*(len(x) > num_max_constits)),np.full((num_max_constits-len(x))*(len(x) < num_max_constits),np.nan, dtype='float32')]) )) ) 
         if item == "clus_pt":
             array_0_np = np.array([*array_0[item].to_numpy()])
+            array_0_pt = np.array([*array_0[item].to_numpy()])
             clus_sort_index_0 = np.argsort(array_0_np)
         axis = 1
         index = list(np.ix_(*[np.arange(clus_sort_index_0) for clus_sort_index_0 in array_0_np.shape]))
-        index[axis] = (-array_0_np).argsort(axis)
-        x_data[0:array_0.shape[0],slice(counter_cluster,counter_cluster+((num_max_constits-1)*num_cluster_variables)+1,num_cluster_variables)] = array_0_np[index]
+        array_0_np = np.array([*array_0[item].to_numpy()])
+        index[axis] = (-array_0_pt).argsort(axis)
+        x_data[0:array_0.shape[0],slice(counter_cluster,counter_cluster+((num_max_constits-1)*num_cluster_variables)+1,num_cluster_variables)] = array_0_np[tuple(index)]
         #print(array_0[item].to_numpy().shape)
         #print(x_data[:,slice(0,112,28)].shape)
         #print((array_0[item].to_numpy()).shape)
@@ -136,11 +138,13 @@ def process_qcd_events(array):
         array_1[item] = (array_1[item].apply(lambda x: np.multiply(np.resize(x,num_max_constits),np.concatenate([np.ones(len(x)*(len(x) <= num_max_constits) + num_max_constits*(len(x) > num_max_constits)),np.full((num_max_constits-len(x))*(len(x) < num_max_constits),np.nan, dtype='float32')]) )) ) 
         if item == "clus_pt":
             array_1_np = np.array([*array_1[item].to_numpy()])
+            array_1_pt = np.array([*array_1[item].to_numpy()])
             clus_sort_index_1 = np.argsort(array_1_np)
         axis = 1
         index = list(np.ix_(*[np.arange(clus_sort_index_1) for clus_sort_index_1 in array_1_np.shape]))
-        index[axis] = (-array_1_np).argsort(axis)
-        x_data[array_0.shape[0]:array_0.shape[0]+array_1.shape[0],slice(counter_cluster,counter_cluster+((num_max_constits-1)*num_cluster_variables)+1,num_cluster_variables)] = array_1_np[index]
+        array_1_np = np.array([*array_1[item].to_numpy()])
+        index[axis] = (-array_1_pt).argsort(axis)
+        x_data[array_0.shape[0]:array_0.shape[0]+array_1.shape[0],slice(counter_cluster,counter_cluster+((num_max_constits-1)*num_cluster_variables)+1,num_cluster_variables)] = array_1_np[tuple(index)]
         counter_cluster = counter_cluster+1
 
     counter_tracks=0
@@ -152,22 +156,26 @@ def process_qcd_events(array):
         array_0[item] = (array_0[item].apply(lambda x: np.multiply(np.resize(x,num_max_tracks),np.concatenate([np.ones(len(x)*(len(x) <= num_max_tracks) + num_max_tracks*(len(x) > num_max_tracks)),np.full((num_max_tracks-len(x))*(len(x) < num_max_tracks),np.nan, dtype='float32')]) )) ) 
         if item == "nn_track_pt":
             array_0_np = np.array([*array_0[item].to_numpy()])
+            array_0_pt = np.array([*array_0[item].to_numpy()])
             track_sort_index_0 = np.argsort(array_0_np)
         axis = 1
         index = list(np.ix_(*[np.arange(track_sort_index_0) for track_sort_index_0 in array_0_np.shape]))
-        index[axis] = (-array_0_np).argsort(axis)
-        x_data[0:array_0.shape[0],slice(counter_tracks+max_counter_cluster,max_counter_cluster+counter_tracks+((num_max_tracks-1)*num_track_variables)+1,num_track_variables)] = array_0_np[index]
+        array_0_np = np.array([*array_0[item].to_numpy()])
+        index[axis] = (-array_0_pt).argsort(axis)
+        x_data[0:array_0.shape[0],slice(counter_tracks+max_counter_cluster,max_counter_cluster+counter_tracks+((num_max_tracks-1)*num_track_variables)+1,num_track_variables)] = array_0_np[tuple(index)]
 
         array_1[item] = (array_1.apply(lambda x: x[item][x['nn_track_jetIndex'] == int(x['jet_index'])], axis=1))
 
         array_1[item] = (array_1[item].apply(lambda x: np.multiply(np.resize(x,num_max_tracks),np.concatenate([np.ones(len(x)*(len(x) <= num_max_tracks) + num_max_tracks*(len(x) > num_max_tracks)),np.full((num_max_tracks-len(x))*(len(x) < num_max_tracks),np.nan, dtype='float32')]) )) ) 
         if item == "nn_track_pt":
             array_1_np = np.array([*array_1[item].to_numpy()])
+            array_1_pt = np.array([*array_1[item].to_numpy()])
             track_sort_index_1 = np.argsort(array_1_np)
         axis = 1
         index = list(np.ix_(*[np.arange(track_sort_index_1) for track_sort_index_1 in array_1_np.shape]))
-        index[axis] = (-array_1_np).argsort(axis)
-        x_data[array_0.shape[0]:array_0.shape[0]+array_1.shape[0],slice(counter_tracks++max_counter_cluster,max_counter_cluster+counter_tracks+((num_max_tracks-1)*num_track_variables)+1,num_track_variables)] = array_1_np[index]
+        array_1_np = np.array([*array_1[item].to_numpy()])
+        index[axis] = (-array_1_pt).argsort(axis)
+        x_data[array_0.shape[0]:array_0.shape[0]+array_1.shape[0],slice(counter_tracks++max_counter_cluster,max_counter_cluster+counter_tracks+((num_max_tracks-1)*num_track_variables)+1,num_track_variables)] = array_1_np[tuple(index)]
 
         counter_tracks = counter_tracks + 1
      
@@ -291,11 +299,13 @@ def process_bib_events(array):
         array[item] = (array[item].apply(lambda x: np.multiply(np.resize(x,num_max_constits),np.concatenate([np.ones(len(x)*(len(x) <= num_max_constits) + num_max_constits*(len(x) > num_max_constits)),np.full((num_max_constits-len(x))*(len(x) < num_max_constits),np.nan, dtype='float32')]) )) ) 
         if item == "clus_pt":
             array_np = np.array([*array[item].to_numpy()])
+            array_pt = np.array([*array[item].to_numpy()])
             clus_sort_index = np.argsort(array_np)
         axis = 1
         index = list(np.ix_(*[np.arange(clus_sort_index) for clus_sort_index in array_np.shape]))
-        index[axis] = (-array_np).argsort(axis)
-        x_data[0:array.shape[0],slice(counter_cluster,counter_cluster+((num_max_constits-1)*num_cluster_variables)+1,num_cluster_variables)] = array_np[index]
+        array_np = np.array([*array[item].to_numpy()])
+        index[axis] = (-array_pt).argsort(axis)
+        x_data[0:array.shape[0],slice(counter_cluster,counter_cluster+((num_max_constits-1)*num_cluster_variables)+1,num_cluster_variables)] = array_np[tuple(index)]
         counter_cluster = counter_cluster+1
 
     counter_tracks=0
@@ -307,11 +317,13 @@ def process_bib_events(array):
         array[item] = (array[item].apply(lambda x: np.multiply(np.resize(x,num_max_tracks),np.concatenate([np.ones(len(x)*(len(x) <= num_max_tracks) + num_max_tracks*(len(x) > num_max_tracks)),np.full((num_max_tracks-len(x))*(len(x) < num_max_tracks),np.nan, dtype='float32')]) )) ) 
         if item == "nn_track_pt":
             array_np = np.array([*array[item].to_numpy()])
+            array_pt = np.array([*array[item].to_numpy()])
             track_sort_index = np.argsort(array_np)
         axis = 1
         index = list(np.ix_(*[np.arange(track_sort_index) for track_sort_index in array_np.shape]))
-        index[axis] = (-array_np).argsort(axis)
-        x_data[0:array.shape[0],slice(counter_tracks+max_counter_cluster,max_counter_cluster+counter_tracks+((num_max_tracks-1)*num_track_variables)+1,num_track_variables)] = array_np[index]
+        array_np = np.array([*array[item].to_numpy()])
+        index[axis] = (-array_pt).argsort(axis)
+        x_data[0:array.shape[0],slice(counter_tracks+max_counter_cluster,max_counter_cluster+counter_tracks+((num_max_tracks-1)*num_track_variables)+1,num_track_variables)] = array_np[tuple(index)]
 
         counter_tracks = counter_tracks + 1
      
@@ -464,11 +476,13 @@ def process_signal_events(array):
         array_0[item] = (array_0[item].apply(lambda x: np.multiply(np.resize(x,num_max_constits),np.concatenate([np.ones(len(x)*(len(x) <= num_max_constits) + num_max_constits*(len(x) > num_max_constits)),np.full((num_max_constits-len(x))*(len(x) < num_max_constits),np.nan, dtype='float32')]) )) ) 
         if item == "clus_pt":
             array_0_np = np.array([*array_0[item].to_numpy()])
+            array_0_pt = np.array([*array_0[item].to_numpy()])
             clus_sort_index_0 = np.argsort(array_0_np)
         axis = 1
         index = list(np.ix_(*[np.arange(clus_sort_index_0) for clus_sort_index_0 in array_0_np.shape]))
-        index[axis] = (-array_0_np).argsort(axis)
-        x_data[0:array_0.shape[0],slice(counter_cluster,counter_cluster+((num_max_constits-1)*num_cluster_variables)+1,num_cluster_variables)] = array_0_np[index]
+        array_0_np = np.array([*array_0[item].to_numpy()])
+        index[axis] = (-array_0_pt).argsort(axis)
+        x_data[0:array_0.shape[0],slice(counter_cluster,counter_cluster+((num_max_constits-1)*num_cluster_variables)+1,num_cluster_variables)] = array_0_np[tuple(index)]
         #print(array_0[item].to_numpy().shape)
         #print(x_data[:,slice(0,112,28)].shape)
         #print((array_0[item].to_numpy()).shape)
@@ -485,11 +499,13 @@ def process_signal_events(array):
         array_1[item] = (array_1[item].apply(lambda x: np.multiply(np.resize(x,num_max_constits),np.concatenate([np.ones(len(x)*(len(x) <= num_max_constits) + num_max_constits*(len(x) > num_max_constits)),np.full((num_max_constits-len(x))*(len(x) < num_max_constits),np.nan, dtype='float32')]) )) ) 
         if item == "clus_pt":
             array_1_np = np.array([*array_1[item].to_numpy()])
+            array_1_pt = np.array([*array_1[item].to_numpy()])
             clus_sort_index_1 = np.argsort(array_1_np)
         axis = 1
         index = list(np.ix_(*[np.arange(clus_sort_index_1) for clus_sort_index_1 in array_1_np.shape]))
-        index[axis] = (-array_1_np).argsort(axis)
-        x_data[array_0.shape[0]:array_0.shape[0]+array_1.shape[0],slice(counter_cluster,counter_cluster+((num_max_constits-1)*num_cluster_variables)+1,num_cluster_variables)] = array_1_np[index]
+        array_1_np = np.array([*array_1[item].to_numpy()])
+        index[axis] = (-array_1_pt).argsort(axis)
+        x_data[array_0.shape[0]:array_0.shape[0]+array_1.shape[0],slice(counter_cluster,counter_cluster+((num_max_constits-1)*num_cluster_variables)+1,num_cluster_variables)] = array_1_np[tuple(index)]
         counter_cluster = counter_cluster+1
 
     counter_tracks=0
@@ -501,22 +517,26 @@ def process_signal_events(array):
         array_0[item] = (array_0[item].apply(lambda x: np.multiply(np.resize(x,num_max_tracks),np.concatenate([np.ones(len(x)*(len(x) <= num_max_tracks) + num_max_tracks*(len(x) > num_max_tracks)),np.full((num_max_tracks-len(x))*(len(x) < num_max_tracks),np.nan, dtype='float32')]) )) ) 
         if item == "nn_track_pt":
             array_0_np = np.array([*array_0[item].to_numpy()])
+            array_0_pt = np.array([*array_0[item].to_numpy()])
             track_sort_index_0 = np.argsort(array_0_np)
         axis = 1
         index = list(np.ix_(*[np.arange(track_sort_index_0) for track_sort_index_0 in array_0_np.shape]))
-        index[axis] = (-array_0_np).argsort(axis)
-        x_data[0:array_0.shape[0],slice(counter_tracks+max_counter_cluster,max_counter_cluster+counter_tracks+((num_max_tracks-1)*num_track_variables)+1,num_track_variables)]  = array_0_np[index]
+        array_0_np = np.array([*array_0[item].to_numpy()])
+        index[axis] = (-array_0_pt).argsort(axis)
+        x_data[0:array_0.shape[0],slice(counter_tracks+max_counter_cluster,max_counter_cluster+counter_tracks+((num_max_tracks-1)*num_track_variables)+1,num_track_variables)]  = array_0_np[tuple(index)]
 
         array_1[item] = (array_1.apply(lambda x: x[item][x['nn_track_jetIndex'] == int(x['test_1'])], axis=1))
 
         array_1[item] = (array_1[item].apply(lambda x: np.multiply(np.resize(x,num_max_tracks),np.concatenate([np.ones(len(x)*(len(x) <= num_max_tracks) + num_max_tracks*(len(x) > num_max_tracks)),np.full((num_max_tracks-len(x))*(len(x) < num_max_tracks),np.nan, dtype='float32')]) )) ) 
         if item == "nn_track_pt":
             array_1_np = np.array([*array_1[item].to_numpy()])
+            array_1_pt = np.array([*array_1[item].to_numpy()])
             track_sort_index_1 = np.argsort(array_1_np)
         axis = 1
         index = list(np.ix_(*[np.arange(track_sort_index_1) for track_sort_index_1 in array_1_np.shape]))
-        index[axis] = (-array_1_np).argsort(axis)
-        x_data[array_0.shape[0]:array_0.shape[0]+array_1.shape[0],slice(counter_tracks+max_counter_cluster,max_counter_cluster+counter_tracks+((num_max_tracks-1)*num_track_variables)+1,num_track_variables)]  = array_1_np[index]
+        array_1_np = np.array([*array_1[item].to_numpy()])
+        index[axis] = (-array_1_pt).argsort(axis)
+        x_data[array_0.shape[0]:array_0.shape[0]+array_1.shape[0],slice(counter_tracks+max_counter_cluster,max_counter_cluster+counter_tracks+((num_max_tracks-1)*num_track_variables)+1,num_track_variables)]  = array_1_np[tuple(index)]
 
         counter_tracks = counter_tracks + 1
      
@@ -662,9 +682,12 @@ for arrays in uproot.iterate("/data/fcormier/calRatio/fullRun2/output/signal-may
 
 
 #print(df)
-#plot_vars(df)
-df = flatten(df, 40000, 200000, 20)
-pre_process(df)
+min_pt = 40000
+max_pt = 200000
+plot_vars(df)
+df = flatten(df, min_pt, max_pt, 20)
+df = pre_process(df, 0, max_pt)
+plot_vars(df, prefix="_post_processing")
 
     #print(arrays.jet_eta)
     #print(arrays[arrays['HLT_jet_TAU60'].apply(lambda x: sum(x)) > 0])
