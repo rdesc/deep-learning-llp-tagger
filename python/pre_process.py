@@ -5,6 +5,12 @@ import pandas as pd
 
 def pre_process(data, min_pt, max_pt):
 
+
+    #SCALE JET PT
+    data["jet_pt"] = data["jet_pt"].sub(min_pt, axis='index')
+    data["jet_pt"] = data["jet_pt"].divide( (max_pt - min_pt), axis='index')
+
+
     #DO PHI, ETA Shift
 
     #Get all eta columns
@@ -19,6 +25,7 @@ def pre_process(data, min_pt, max_pt):
 
     #Subtract the phi of first cluster(largest pt) from all other
     data[filter_clus_phi] = data[filter_clus_phi].sub(data["clus_phi_0"], axis='index')
+
 
 
     #Do eta, phi FLIP

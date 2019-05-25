@@ -31,6 +31,36 @@ def load_data(file_name):
 
 
 def process_qcd_events(array):
+
+    ###Added while waiting for QCD samples###
+    #TODO: delete when those come
+
+    array['test'] = array.apply(lambda x: ([((x['jet_eta'] - i)**2+(x['jet_phi'] - j)**2) for i,j in zip(x['LLP_eta'],x['LLP_phi'])]) , axis=1)
+    #array['test_0'] = (array.test[array['test'].apply(lambda x: len(x[0])) > 0]).apply(lambda x: np.argmin((x[0])*(1+(-2)*(min(x[0]) > 0.04))))
+    #test_0: LLP 0, test_1: LLP_1: only choose lowest DR, which is less than 0.4, make negative if higher
+    array['test_0'] = (array.test[array['test'].apply(lambda x: len(x[0])) > 0]).apply(lambda x: np.argmin((x[0]))*(1+(-2)*(min(x[0])>0.4)*1))
+    array['test_1'] = (array.test[array['test'].apply(lambda x: len(x[1])) > 0]).apply(lambda x: np.argmin((x[1]))*(1+(-2)*(min(x[1])>0.4)*1))
+    #array['test_1'] = (array.test[array['test'].apply(lambda x: len(x[1])) > 0]).apply(lambda x: np.argmin((x[1])*(1+(-2)*(min(x[1]) > 0.04))))
+    #TODO Look for ways to still see if two available jets when min is same jet
+    #Choose only non-negative indices, and where it's not the same jet matched to both LLPs
+    array['test_0'] = array.test_0[array.test_0 >=0]
+    array['test_1'] = array.test_1[array.test_1 >=0]
+    array['test_1'] = array['test_1'].loc[~(array['test_0'] == array['test_1'])]
+
+    array['test'] = array.apply(lambda x: x['jet_index'] != x['test_0'], axis=1)
+    array['jet_pt'] = array.apply(lambda x: x['jet_pt'][x['test'] == True], axis=1)
+    array['jet_eta'] = array.apply(lambda x: x['jet_eta'][x['test'] == True], axis=1)
+    array['jet_phi'] = array.apply(lambda x: x['jet_phi'][x['test'] == True], axis=1)
+    array['jet_index'] = array.apply(lambda x: x['jet_index'][x['test'] == True], axis=1)
+
+    array['test'] = array.apply(lambda x: x['jet_index'] != x['test_1'], axis=1)
+    array['jet_pt'] = array.apply(lambda x: x['jet_pt'][x['test'] == True], axis=1)
+    array['jet_eta'] = array.apply(lambda x: x['jet_eta'][x['test'] == True], axis=1)
+    array['jet_phi'] = array.apply(lambda x: x['jet_phi'][x['test'] == True], axis=1)
+    array['jet_index'] = array.apply(lambda x: x['jet_index'][x['test'] == True], axis=1)
+
+    ###End of added for lack of QCD samples###
+
     array['test'] = array.apply(lambda x: x['jet_pt'] > 40000, axis=1)
     array['jet_pt'] = array.apply(lambda x: x['jet_pt'][x['test'] == True], axis=1)
     array['jet_eta'] = array.apply(lambda x: x['jet_eta'][x['test'] == True], axis=1)
@@ -393,6 +423,7 @@ def process_signal_events(array):
     #Select only rows with either LLPs are matched to a jet
     array = array.loc[ ((array.test_0 >= 0) | (array.test_1 >= 0))].copy()
 
+
     #print(array['LLP_eta'].apply(lambda x: ([((x[1] < 1.5 and i > 1400) or (x[1] > 1.5 and j > 3000)) for i,j in zip(x['LLP_eta'].apply( lambda x: x[1]),x['LLP_phi'].apply(lambda x: x[1]))])))
     #print( array.apply(lambda x: ([((x['LLP_eta'] < 1.5 and i > 1200) or (x['LLP_eta'] > 1.5 and j > 3000) for i,j in zip(x['LLP_Lxy'],x['LLP_Lz'])])) , axis=1))
 
@@ -641,11 +672,11 @@ for arrays in uproot.iterate("/data/fcormier/calRatio/fullRun2/output/may16_2019
 
     if len(signal_arrays) > 0:
         df_signal = process_signal_events(signal_arrays)
-        df = df.append(df_signal, ignore_index=True)
+        df = df.append(df_signal, ignore_index=False)
 
     if len(BIB_arrays) > 0:
         df_bib = process_bib_events(BIB_arrays)
-        df = df.append(df_signal, ignore_index=True)
+        df = df.append(df_signal, ignore_index=False)
 
 
 
@@ -662,11 +693,11 @@ for arrays in uproot.iterate("/data/fcormier/calRatio/fullRun2/output/may16_2019
 
     if False and len(signal_arrays) > 0:
         df_signal = process_signal_events(signal_arrays)
-        df = df.append(df_signal, ignore_index=True)
+        df = df.append(df_signal, ignore_index=False)
 
     if len(BIB_arrays) > 0:
         df_bib = process_bib_events(BIB_arrays)
-        df = df.append(df_bib, ignore_index=True)
+        df = df.append(df_bib, ignore_index=False)
 
 
 for arrays in uproot.iterate("/data/fcormier/calRatio/fullRun2/output/signal-may7_2019/qcd/DAOD*.root", "trees_msVtx_",
@@ -678,7 +709,7 @@ for arrays in uproot.iterate("/data/fcormier/calRatio/fullRun2/output/signal-may
 
     if len(QCD_arrays) > 0:
         df_qcd = process_qcd_events(QCD_arrays)
-        df = df.append(df_qcd, ignore_index=True)
+        df = df.append(df_qcd, ignore_index=False)
 
 
 #print(df)
@@ -689,6 +720,7 @@ df = flatten(df, min_pt, max_pt, 20)
 df = pre_process(df, 0, max_pt)
 plot_vars(df, prefix="_post_processing")
 
+train(df.fillna(0))
     #print(arrays.jet_eta)
     #print(arrays[arrays['HLT_jet_TAU60'].apply(lambda x: sum(x)) > 0])
 
