@@ -669,7 +669,7 @@ counter=0
 start = time.time()
 
 for arrays in uproot.iterate("/data/fcormier/calRatio/fullRun2/grid_output_1/signal/*/user.fcormier*.root", "trees_msVtx_",
-        var_list_MC,entrysteps=200000,executor=executor, outputtype=pd.DataFrame):
+        var_list_MC,entrysteps=500000,executor=executor, outputtype=pd.DataFrame):
     print("Signal")
     print("It has been " + (str(time.time() - start)) + "seconds since start")
     counter = counter+1
@@ -694,7 +694,7 @@ for arrays in uproot.iterate("/data/fcormier/calRatio/fullRun2/grid_output_1/sig
 
 
 for arrays in uproot.iterate("/data/fcormier/calRatio/fullRun2/grid_output_1/bib/*/user.fcormier*.root", "trees_msVtx_",
-        var_list_data,entrysteps=200000,executor=executor, outputtype=pd.DataFrame):
+        var_list_data,entrysteps=500000,executor=executor, outputtype=pd.DataFrame):
     #do_something_with(arrays)
     print("BIB")
     print("It has been " + (str(time.time() - start)) + "seconds since start")
@@ -718,7 +718,7 @@ for arrays in uproot.iterate("/data/fcormier/calRatio/fullRun2/grid_output_1/bib
 
 
 for arrays in uproot.iterate("/data/fcormier/calRatio/fullRun2/grid_output_1/signal/*/user.fcormier*.root", "trees_msVtx_",
-        var_list_MC,entrysteps=200000,executor=executor, outputtype=pd.DataFrame):
+        var_list_MC,entrysteps=500000,executor=executor, outputtype=pd.DataFrame):
     #do_something_with(arrays)
     print("QCD")
     print("It has been " + (str(time.time() - start)) + "seconds since start")
