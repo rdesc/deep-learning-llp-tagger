@@ -17,6 +17,9 @@ import itertools
 
 import sys
 
+from glob import glob
+
+import time
 
 def load_root(file_name):
     uproot.open(file_name).keys()
@@ -115,7 +118,7 @@ def process_qcd_events(array):
     x_data[0:array_0.shape[0],0] = np.zeros(array_0.shape[0])
     x_data[array_0.shape[0]:array_0.shape[0]+array_1.shape[0],0] = np.zeros(array_1.shape[0])
 
-    x_data[0:array_0.shape[0],1] = np.multiply( np.array([*array_0['mcEventWeight'].to_numpy()]), 20000000*np.random.rand(array_0.shape[0]) + 100000000)
+    x_data[0:array_0.shape[0],1] = np.multiply( np.array([array_0['mcEventWeight'].to_numpy()]), 20000000*np.random.rand(array_0.shape[0]) + 100000000)
     x_data[array_0.shape[0]:array_0.shape[0]+array_1.shape[0],1] = np.multiply( np.array([*array_1['mcEventWeight'].to_numpy()]), 20000000*np.random.rand(array_1.shape[0]) + 100000000)
 
     x_data[0:array_0.shape[0],2] = np.ones(array_0.shape[0])
@@ -659,8 +662,18 @@ var_list_data = ["HLT_jet_TAU60","HLT_jet_TAU100","HLT_jet_LLPNM","HLT_jet_LLPRO
 
 df = pd.DataFrame()
 
-for arrays in uproot.iterate("/data/fcormier/calRatio/fullRun2/output/may16_2019/signal/DAOD*.root", "trees_msVtx_",
-        var_list_MC,entrysteps=10000,executor=executor, outputtype=pd.DataFrame):
+print(glob("/data/fcormier/calRatio/fullRun2/grid_output_1/signal/*/DAOD*.root"))
+
+counter=0
+
+start = time.time()
+
+for arrays in uproot.iterate("/data/fcormier/calRatio/fullRun2/grid_output_1/signal/*/user.fcormier*.root", "trees_msVtx_",
+        var_list_MC,entrysteps=200000,executor=executor, outputtype=pd.DataFrame):
+    print("Signal")
+    print("It has been " + (str(time.time() - start)) + "seconds since start")
+    counter = counter+1
+    print(counter)
     #do_something_with(arrays)
     signal_arrays = arrays[arrays.signal == 1]
     QCD_arrays = arrays[arrays.QCD == 1]
@@ -680,9 +693,13 @@ for arrays in uproot.iterate("/data/fcormier/calRatio/fullRun2/output/may16_2019
 
 
 
-for arrays in uproot.iterate("/data/fcormier/calRatio/fullRun2/output/may16_2019/bib/DAOD*.root", "trees_msVtx_",
-        var_list_data,entrysteps=10000,executor=executor, outputtype=pd.DataFrame):
+for arrays in uproot.iterate("/data/fcormier/calRatio/fullRun2/grid_output_1/bib/*/user.fcormier*.root", "trees_msVtx_",
+        var_list_data,entrysteps=200000,executor=executor, outputtype=pd.DataFrame):
     #do_something_with(arrays)
+    print("BIB")
+    print("It has been " + (str(time.time() - start)) + "seconds since start")
+    counter = counter+1
+    print(counter)
     signal_arrays = arrays[arrays.signal == 1]
     QCD_arrays = arrays[arrays.QCD == 1]
     BIB_arrays = arrays[arrays.BIB == 1]
@@ -700,11 +717,15 @@ for arrays in uproot.iterate("/data/fcormier/calRatio/fullRun2/output/may16_2019
         df = df.append(df_bib, ignore_index=False)
 
 
-for arrays in uproot.iterate("/data/fcormier/calRatio/fullRun2/output/signal-may7_2019/qcd/DAOD*.root", "trees_msVtx_",
-        var_list_MC,entrysteps=10000,executor=executor, outputtype=pd.DataFrame):
+for arrays in uproot.iterate("/data/fcormier/calRatio/fullRun2/grid_output_1/signal/*/user.fcormier*.root", "trees_msVtx_",
+        var_list_MC,entrysteps=200000,executor=executor, outputtype=pd.DataFrame):
     #do_something_with(arrays)
+    print("QCD")
+    print("It has been " + (str(time.time() - start)) + "seconds since start")
+    counter = counter+1
+    print(counter)
     signal_arrays = arrays[arrays.signal == 1]
-    QCD_arrays = arrays[arrays.QCD == 1]
+    QCD_arrays = arrays[arrays.signal == 1]
     BIB_arrays = arrays[arrays.BIB == 1]
 
     if len(QCD_arrays) > 0:
@@ -715,12 +736,23 @@ for arrays in uproot.iterate("/data/fcormier/calRatio/fullRun2/output/signal-may
 #print(df)
 min_pt = 40000
 max_pt = 200000
+print("Plotting...")
+print("It has been " + (str(time.time() - start)) + "seconds since start")
 plot_vars(df)
+print("Saving raw file...")
+df.to_pickle("raw_output")
+print("Flattening...")
+print("It has been " + (str(time.time() - start)) + "seconds since start")
 df = flatten(df, min_pt, max_pt, 20)
+print("pre-processing...")
+print("It has been " + (str(time.time() - start)) + "seconds since start")
 df = pre_process(df, 0, max_pt)
 plot_vars(df, prefix="_post_processing")
+print("Saving processed file...")
+print("It has been " + (str(time.time() - start)) + "seconds since start")
+df.to_pickle("processed_output")
 
-train(df.fillna(0))
+#train(df.fillna(0))
     #print(arrays.jet_eta)
     #print(arrays[arrays['HLT_jet_TAU60'].apply(lambda x: sum(x)) > 0])
 

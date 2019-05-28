@@ -26,7 +26,7 @@ def remove_values_from_list(the_list, val):
 
 def plot_three_histos(signal,qcd,bib,name,xmin,xmax,bins, prefix):
     plt.hist(signal, range=(xmin,xmax),  density=True, color='red',alpha=0.5,linewidth=0, histtype='stepfilled',bins=bins,label="Signal")
-    #plt.hist(qcd, range=(xmin,xmax), density=True, color='blue',alpha=0.5, linewidth=0,histtype='stepfilled',bins=bins,label="QCD")
+    plt.hist(qcd, range=(xmin,xmax), density=True, color='blue',alpha=0.5, linewidth=0,histtype='stepfilled',bins=bins,label="QCD")
     plt.hist(bib, range=(xmin,xmax), density=True, color='green',alpha=0.5, linewidth=0,histtype='stepfilled',bins=bins,label="BIB")
     plt.xlabel(name)
     plt.legend()
@@ -110,6 +110,7 @@ def plot_vars(data, prefix=""):
  
     plot_constit(signal_all_clus_eta,signal_all_clus_phi, signal_all_clus_pt, "signal_constits", prefix)
     plot_constit(bib_all_clus_eta,bib_all_clus_phi, bib_all_clus_pt, "bib_constits", prefix)
+    plot_constit(qcd_all_clus_eta,qcd_all_clus_phi, qcd_all_clus_pt, "qcd_constits", prefix)
 
     xmin_dict = {"jet_pt":0, "jet_eta":-2.5, "jet_phi":-3.14, "jet_E":0, "clus_pt":0,"clus_eta":-2.5,"clus_phi":-3.14,"e_PreSamplerB":0,"e_EMB1":0,"e_EMB2":0,"e_EMB3":0,"e_PreSamplerE":0,"e_EME1":0,"e_EME2":0,"e_EME3":0,"e_HEC0":0,"e_HEC1":0,"e_HEC2":0,"e_HEC3":0,"e_TileBar0":0,"e_TileBar1":0,"e_TileBar2":0,"e_TileGap1":0,"e_TileGap2":0,"e_TileGap3":0,"e_TileExt0":0,"e_TileExt1":0,"e_TileExt2":0,"e_FCAL0":0,"e_FCAL1":0,"e_FCAL2":0,"clusTime":-10,"nn_track_pt":0,"nn_track_eta":-2.5,"nn_track_phi":-3.14,"nn_track_d0":0,"nn_track_z0":0,"nn_track_PixelShared":-1,"nn_track_PixelSplit":-1,"nn_track_SCTShared":-1,"nn_track_PixelHoles":-1,"nn_track_SCTHoles":-1,"nn_track_PixelHits":-1,"nn_track_SCTHits":-1,"nn_MSeg_etaPos":-4,"nn_MSeg_phiPos":-3.14,"nn_MSeg_etaDir":-8,"nn_MSeg_phiDir":-3.14,"nn_MSeg_t0":-10}
 
