@@ -124,10 +124,7 @@ if(model_to_do == "lstm"):
         loss_weights=[1., 0.2, 0.2, 0.2], metrics=['accuracy'])
     model.summary()
 
-    with tf.Session(config=tf.ConfigProto(
-                    intra_op_parallelism_threads=16)) as sess:
-        K.set_session(sess)
-        history = model.fit([X_train_constit, X_train_track, X_train_MSeg, X_train_jet.values], [y_train, y_train, y_train, y_train], sample_weight= [weights_train.values, weights_train.values, weights_train.values, weights_train.values], epochs=20, batch_size=512, validation_data = ([X_test_constit, X_test_track, X_test_MSeg, X_test_jet.values], [y_val, y_val, y_val, y_val], [weights_test.values, weights_test.values, weights_test.values,weights_test.values]),callbacks=[
+    history = model.fit([X_train_constit, X_train_track, X_train_MSeg, X_train_jet.values], [y_train, y_train, y_train, y_train], sample_weight= [weights_train.values, weights_train.values, weights_train.values, weights_train.values], epochs=20, batch_size=512, validation_data = ([X_test_constit, X_test_track, X_test_MSeg, X_test_jet.values], [y_val, y_val, y_val, y_val], [weights_test.values, weights_test.values, weights_test.values,weights_test.values]),callbacks=[
                         EarlyStopping(
                             verbose=True,
                             patience=5,
@@ -158,6 +155,8 @@ if(model_to_do == "lstm"):
     plt.xlabel('epoch')
     plt.legend(['train', 'test'], loc='upper left')
     plt.savefig("plots/loss_monitoring"+ ".pdf", format='pdf', transparent=True)
+
+    evaluate_model(X_test, y_test, weights_test, model_to_do)
 
     
 
@@ -214,4 +213,4 @@ if (model_to_do == "dense"):
     plt.legend(['train', 'test'], loc='upper left')
     plt.savefig("plots/loss_monitoring"+ ".pdf", format='pdf', transparent=True)
 
-    evaluate_model(X_test, y_test, weights_test)
+    evaluate_model(X_test, y_test, weights_test, model_to_do)

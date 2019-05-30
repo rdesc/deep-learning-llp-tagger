@@ -180,25 +180,71 @@ def plot_prediction_histograms(destination,
     plt.clf()
     return
 
-def evaluate_model(X_test, y_test, weights_test):
+def evaluate_model(X_test, y_test, weights_test, model_to_do):
 
-    model = Sequential()
-    model.add(Dense(600, input_dim=X_test.shape[1]))
-    model.add(Dropout(0.2))
-    model.add(Activation('relu'))
-    model.add(Dense(202))
-    model.add(Dropout(0.2))
-    model.add(Activation('relu'))
-    model.add(Dense(22))
-    model.add(Dropout(0.2))
-    model.add(Activation('relu'))
-    model.add(Dense(12))
-    model.add(Activation('relu'))
-    model.add(Dense(3))
-    model.add(Activation('softmax'))
-    model.compile(optimizer='Adam', loss='categorical_crossentropy', metrics=['accuracy'])
-    model.summary()
-    model.load_weights("keras_outputs/checkpoint")
+    if (model_to_do == "dense"):
+
+        model = Sequential()
+        model.add(Dense(600, input_dim=X_test.shape[1]))
+        model.add(Dropout(0.2))
+        model.add(Activation('relu'))
+        model.add(Dense(202))
+        model.add(Dropout(0.2))
+        model.add(Activation('relu'))
+        model.add(Dense(22))
+        model.add(Dropout(0.2))
+        model.add(Activation('relu'))
+        model.add(Dense(12))
+        model.add(Activation('relu'))
+        model.add(Dense(3))
+        model.add(Activation('softmax'))
+        model.compile(optimizer='Adam', loss='categorical_crossentropy', metrics=['accuracy'])
+        model.summary()
+        model.load_weights("keras_outputs/checkpoint")
+
+    if (model_to_do == "lstm"):
+
+        num_constit_vars = 28
+        num_track_vars = 12
+        num_MSeg_vars = 5
+
+        num_max_constits = 30
+        num_max_tracks = 20
+        num_max_MSegs = 70
+
+        X_test_constit = X_test_constit.values.reshape(X_test_constit.shape[0],num_max_constits,num_constit_vars)
+        X_test_track = X_test_track.values.reshape(X_test_track.shape[0],num_max_tracks,num_track_vars)
+        X_test_MSeg = X_test_MSeg.values.reshape(X_test_MSeg.shape[0],num_max_MSegs,num_MSeg_vars)
+
+        constit_input = Input(shape=(X_test_constit[0].shape),dtype='float32',name='constit_input')
+        constit_out = LSTM(num_constit_vars)(constit_input)
+        constit_output = Dense(3, activation='softmax', name='constit_output')(constit_out)
+
+        track_input = Input(shape=(X_test_track[0].shape),dtype='float32',name='track_input')
+        track_out = LSTM(num_track_vars)(track_input)
+        track_output = Dense(3, activation='softmax', name='track_output')(track_out)
+
+        MSeg_input = Input(shape=(X_test_MSeg[0].shape),dtype='float32',name='MSeg_input')
+        MSeg_out = LSTM(num_MSeg_vars)(MSeg_input)
+        MSeg_output = Dense(3, activation='softmax', name='MSeg_output')(MSeg_out)
+
+        jet_input = Input(shape = X_test_jet.values[0].shape, name='jet_input')
+
+        x = keras.layers.concatenate([constit_out, track_out, MSeg_out, jet_input])
+
+        x = Dense(120, activation='relu')(x)
+        x = Dropout(0.2)(x)
+        x = Dense(12, activation='relu')(x)
+        x = Dropout(0.2)(x)
+
+        main_output = Dense(3, activation='softmax', name='main_output')(x)
+
+        model = Model(inputs=[constit_input, track_input, MSeg_input, jet_input], outputs=[main_output, constit_output, track_output, MSeg_output])
+
+
+        n_optimizer = keras.optimizers.Nadam(lr=0.1, beta_1=0.9, beta_2=0.999, epsilon=None, schedule_decay=0.0004)
+        model.compile(optimizer=n_optimizer, loss='categorical_crossentropy',
+            loss_weights=[1., 0.2, 0.2, 0.2], metrics=['accuracy'])
 
     prediction = model.predict(X_test.values, verbose=True)
 
