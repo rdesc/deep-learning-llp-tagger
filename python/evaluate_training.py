@@ -46,8 +46,6 @@ def find_threshold(prediction,y, weight, perc, label):
     #prediction is 3xN, want to sort by BIB weight
 
     bib_events_y = y[y==2]
-    print(y.shape)
-    print(prediction.shape)
     bib_events_prediction = prediction[y==2]
 
     prediction_sorted = np.array(bib_events_prediction[bib_events_prediction[:,2].argsort()])
@@ -59,8 +57,6 @@ def find_threshold(prediction,y, weight, perc, label):
 
     cutoffIndex = round(((100-perc)/100)*bib_events_y.size)
     print("CutoffIndex: " + str(int(cutoffIndex)))
-    print(prediction_sorted)
-    print(prediction_sorted.item(2,2))
     threshold = prediction_sorted.item((int(cutoffIndex),2))
     print("Treshold: " + str(threshold))
 
@@ -91,23 +87,14 @@ def make_multi_roc_curve(prediction,y,weight,threshold,label,leftovers):
     num_qcd_leftover = np.sum(weight_left[y_left==0])
     qcd_ratio = num_qcd_leftover/num_qcd_original
 
-    print("num signal original: " + str(num_signal_original))
-    print("num signal leftover: " + str(num_signal_leftover))
-    print("signal_ratio: " + str(signal_ratio))
-
 
     sig_left = np.sum(np.where(np.equal(y_left, 1), weight_left, 0))
     qcd_left = np.sum(np.where(np.equal(y_left, 0), weight_left, 0))
     bib_left = np.sum(np.where(np.equal(y_left, 2), weight_left, 0))
-
-    print("y_left size: " + str(y_left.shape))
-    print("weight_left size: " + str(weight_left.shape))
-    print("prediction_left size: " + str(np.concatenate([prediction_left[:,0], prediction_left[:,1]]).shape))
     prediction_left_signal = prediction_left[:,1]
     #y_left[y_left==2] = 0
     (fpr, tpr, _) = roc_curve(y_left, prediction_left_signal, sample_weight=weight_left, pos_label=1)
     a = auc(fpr*qcd_ratio,tpr*signal_ratio)
-    print("Auc: " + str(a))
 
     return fpr, tpr, a, signal_ratio, qcd_ratio
 
@@ -154,8 +141,6 @@ def get_efficiencies_with_weights(py, y ,weight, threshold):
             #print("b = " + str(b))
             #print("B = " + str(B))
             #print("Accuracy: " + str(accuracy))
-            print("Signal efficiency: " + str(sig_eff))
-            print("Background rejection: " + str(bg_rej))
             return sig_eff, bg_rej, sig_err, bg_rej_err, S, B
 
 
@@ -170,9 +155,6 @@ def plot_prediction_histograms(destination,
     bkg_rows = np.where(labels==0)
     bib_rows = np.where(labels==2)
     #print(sig_rows)
-    print("signal label #: " + str(len(prediction[sig_rows][:,1])))
-    print("qcd label #: " + str(len(prediction[bkg_rows][:,1])))
-    print("bib label #: " + str(len(prediction[bib_rows][:,1])))
     plt.hist(prediction[sig_rows][:,1], weights=weight.values[sig_rows], color='red',alpha=0.5,linewidth=0, histtype='stepfilled',bins=50,label="Signal")
     plt.hist(prediction[bkg_rows][:,1], weights=weight.values[bkg_rows], color='blue',alpha=0.5, linewidth=0,histtype='stepfilled',bins=50,label="QCD")
     plt.hist(prediction[bib_rows][:,1], weights=weight.values[bib_rows], color='green',alpha=0.5, linewidth=0,histtype='stepfilled',bins=50,label="BIB")
@@ -201,14 +183,16 @@ def plot_prediction_histograms(destination,
 def evaluate_model(X_test, y_test, weights_test):
 
     model = Sequential()
-
-    model.add(Dense(300, input_dim=X_test.shape[1]))
+    model.add(Dense(600, input_dim=X_test.shape[1]))
+    model.add(Dropout(0.2))
     model.add(Activation('relu'))
-    model.add(Dense(102))
+    model.add(Dense(202))
+    model.add(Dropout(0.2))
+    model.add(Activation('relu'))
+    model.add(Dense(22))
+    model.add(Dropout(0.2))
     model.add(Activation('relu'))
     model.add(Dense(12))
-    model.add(Activation('relu'))
-    model.add(Dense(6))
     model.add(Activation('relu'))
     model.add(Dense(3))
     model.add(Activation('softmax'))
@@ -231,7 +215,8 @@ def evaluate_model(X_test, y_test, weights_test):
     plot_prediction_histograms(destination,prediction,y_test, weights_test)
     #threshold_array = np.logspace(-0.1,-0.001,30)[::-3]
     plt.figure()
-    threshold_array = [0.9999,(1-0.001),(1-0.003),(1-0.009),(1-0.023),(1-0.059),(1-0.151),(1-0.389),0.001]
+    #threshold_array = [0.9999,(1-0.001),(1-0.003),(1-0.009),(1-0.023),(1-0.059),(1-0.151),(1-0.389),0.001]
+    threshold_array = [0.99,(1-0.03),(1-0.09),(1-0.23),(1-0.59),0.001]
     #threshold_array =  np.logspace(-4,0,30)[::-3]
     #for percent in range(0,100,10):
     for item in threshold_array:
@@ -240,22 +225,18 @@ def evaluate_model(X_test, y_test, weights_test):
         #print(prediction.shape)
         #print(y_predictions.shape)
         test_threshold, leftovers = find_threshold(prediction,y_test, weights_test, test_perc, test_label)
-        print("BIB Efficiency: " + str(item*100))
-        print("BIB Threshold: " +str(test_threshold))
-        print("Length of leftovers: " +str(len(prediction[leftovers])))
         bkg_eff, tag_eff, roc_auc, sig_ratio, qcd_ratio = make_multi_roc_curve(prediction,y_test,weights_test,test_threshold,test_label,leftovers)
         print("AUC: " + str(roc_auc) )
-        print(bkg_eff)
         plt.plot(tag_eff*sig_ratio, (1.0-bkg_eff)*qcd_ratio, label= f"BIB Eff: {(-item+1):.3f}" +f", AUC: {roc_auc:.3f}")
         plt.xlabel("LLP Tagging Efficiency")
         plt.ylabel("QCD Efficiency")
         axes = plt.gca()
         axes.set_xlim([0,1])
         #axes.set_ylim([0,1])
-plt.legend()
-plt.savefig("plots/roc_curve_atlas_all" + ".pdf", format='pdf', transparent=True)
-plt.clf()
-plt.cla()
+    plt.legend()
+    plt.savefig("plots/roc_curve_atlas_all" + ".pdf", format='pdf', transparent=True)
+    plt.clf()
+    plt.cla()
 
 
 
