@@ -9,6 +9,7 @@ import uproot
 from make_plots import *
 from flatten_dist import *
 from pre_process import *
+from parametrize_masses import *
 
 import concurrent.futures
 import multiprocessing
@@ -20,6 +21,7 @@ import sys
 from glob import glob
 
 import time
+import re
 
 def load_root(file_name):
     uproot.open(file_name).keys()
@@ -31,6 +33,8 @@ def load_data(file_name):
     #x_data = x_data[0:1000,:]
     return x_data
 
+def find_number(text, c):
+    return re.findall(r'%s(\d+)' % c, text)
 
 
 def process_qcd_events(array):
@@ -38,6 +42,7 @@ def process_qcd_events(array):
     ###Added while waiting for QCD samples###
     #TODO: delete when those come
 
+    '''
     array['test'] = array.apply(lambda x: ([((x['jet_eta'] - i)**2+(x['jet_phi'] - j)**2) for i,j in zip(x['LLP_eta'],x['LLP_phi'])]) , axis=1)
     #array['test_0'] = (array.test[array['test'].apply(lambda x: len(x[0])) > 0]).apply(lambda x: np.argmin((x[0])*(1+(-2)*(min(x[0]) > 0.04))))
     #test_0: LLP 0, test_1: LLP_1: only choose lowest DR, which is less than 0.4, make negative if higher
@@ -52,38 +57,45 @@ def process_qcd_events(array):
 
     array['test'] = array.apply(lambda x: x['jet_index'] != x['test_0'], axis=1)
     array['jet_pt'] = array.apply(lambda x: x['jet_pt'][x['test'] == True], axis=1)
+    array['jet_isClean_LooseBadLLP'] = array.apply(lambda x: x['jet_isClean_LooseBadLLP'][x['test'] == True], axis=1)
     array['jet_eta'] = array.apply(lambda x: x['jet_eta'][x['test'] == True], axis=1)
     array['jet_phi'] = array.apply(lambda x: x['jet_phi'][x['test'] == True], axis=1)
     array['jet_index'] = array.apply(lambda x: x['jet_index'][x['test'] == True], axis=1)
 
     array['test'] = array.apply(lambda x: x['jet_index'] != x['test_1'], axis=1)
     array['jet_pt'] = array.apply(lambda x: x['jet_pt'][x['test'] == True], axis=1)
+    array['jet_isClean_LooseBadLLP'] = array.apply(lambda x: x['jet_isClean_LooseBadLLP'][x['test'] == True], axis=1)
     array['jet_eta'] = array.apply(lambda x: x['jet_eta'][x['test'] == True], axis=1)
     array['jet_phi'] = array.apply(lambda x: x['jet_phi'][x['test'] == True], axis=1)
     array['jet_index'] = array.apply(lambda x: x['jet_index'][x['test'] == True], axis=1)
 
     ###End of added for lack of QCD samples###
+    '''
 
     array['test'] = array.apply(lambda x: x['jet_pt'] > 40000, axis=1)
     array['jet_pt'] = array.apply(lambda x: x['jet_pt'][x['test'] == True], axis=1)
+    array['jet_isClean_LooseBadLLP'] = array.apply(lambda x: x['jet_isClean_LooseBadLLP'][x['test'] == True], axis=1)
     array['jet_eta'] = array.apply(lambda x: x['jet_eta'][x['test'] == True], axis=1)
     array['jet_phi'] = array.apply(lambda x: x['jet_phi'][x['test'] == True], axis=1)
     array['jet_index'] = array.apply(lambda x: x['jet_index'][x['test'] == True], axis=1)
 
     array['test'] = array.apply(lambda x: x['jet_pt'] < 500000, axis=1)
     array['jet_pt'] = array.apply(lambda x: x['jet_pt'][x['test'] == True], axis=1)
+    array['jet_isClean_LooseBadLLP'] = array.apply(lambda x: x['jet_isClean_LooseBadLLP'][x['test'] == True], axis=1)
     array['jet_eta'] = array.apply(lambda x: x['jet_eta'][x['test'] == True], axis=1)
     array['jet_phi'] = array.apply(lambda x: x['jet_phi'][x['test'] == True], axis=1)
     array['jet_index'] = array.apply(lambda x: x['jet_index'][x['test'] == True], axis=1)
 
     array['test'] = array.apply(lambda x: x['jet_eta'] > -2.5, axis=1)
     array['jet_pt'] = array.apply(lambda x: x['jet_pt'][x['test'] == True], axis=1)
+    array['jet_isClean_LooseBadLLP'] = array.apply(lambda x: x['jet_isClean_LooseBadLLP'][x['test'] == True], axis=1)
     array['jet_eta'] = array.apply(lambda x: x['jet_eta'][x['test'] == True], axis=1)
     array['jet_phi'] = array.apply(lambda x: x['jet_phi'][x['test'] == True], axis=1)
     array['jet_index'] = array.apply(lambda x: x['jet_index'][x['test'] == True], axis=1)
 
     array['test'] = array.apply(lambda x: x['jet_eta'] < 2.5, axis=1)
     array['jet_pt'] = array.apply(lambda x: x['jet_pt'][x['test'] == True], axis=1)
+    array['jet_isClean_LooseBadLLP'] = array.apply(lambda x: x['jet_isClean_LooseBadLLP'][x['test'] == True], axis=1)
     array['jet_eta'] = array.apply(lambda x: x['jet_eta'][x['test'] == True], axis=1)
     array['jet_phi'] = array.apply(lambda x: x['jet_phi'][x['test'] == True], axis=1)
     array['jet_index'] = array.apply(lambda x: x['jet_index'][x['test'] == True], axis=1)
@@ -93,11 +105,13 @@ def process_qcd_events(array):
 
  
     array_0['jet_pt'] = array_0['jet_pt'].apply(lambda x: x[0])
+    array_0['jet_isClean_LooseBadLLP'] = array_0['jet_isClean_LooseBadLLP'].apply(lambda x: x[0])
     array_0['jet_eta'] = array_0['jet_eta'].apply(lambda x: x[0])
     array_0['jet_phi'] = array_0['jet_phi'].apply(lambda x: x[0])
     array_0['jet_index'] = array_0['jet_index'].apply(lambda x: x[0])
 
     array_1['jet_pt'] = array_1['jet_pt'].apply(lambda x: x[1])
+    array_1['jet_isClean_LooseBadLLP'] = array_1['jet_isClean_LooseBadLLP'].apply(lambda x: x[1])
     array_1['jet_eta'] = array_1['jet_eta'].apply(lambda x: x[1])
     array_1['jet_phi'] = array_1['jet_phi'].apply(lambda x: x[1])
     array_1['jet_index'] = array_1['jet_index'].apply(lambda x: x[1])
@@ -111,7 +125,7 @@ def process_qcd_events(array):
     num_max_muonSegs = 70
 
     size_0 = array_0.shape[0] + array_1.shape[0]
-    size_1 = (num_cluster_variables*num_max_constits) + (num_track_variables*num_max_tracks) + (num_muon_variables*num_max_muonSegs) + 6
+    size_1 = (num_cluster_variables*num_max_constits) + (num_track_variables*num_max_tracks) + (num_muon_variables*num_max_muonSegs) + 13
     x_data = np.full([size_0,size_1],np.nan, dtype='float32')
     
 
@@ -132,6 +146,30 @@ def process_qcd_events(array):
 
     x_data[0:array_0.shape[0],5] = np.array([*array_0['jet_phi'].to_numpy()])
     x_data[array_0.shape[0]:array_0.shape[0]+array_1.shape[0],5] = np.array([*array_1['jet_phi'].to_numpy()])
+
+    x_data[0:array_0.shape[0],6] = np.array([*array_0['jet_isClean_LooseBadLLP'].to_numpy()])
+    x_data[array_0.shape[0]:array_0.shape[0]+array_1.shape[0],6] = np.array([*array_1['jet_isClean_LooseBadLLP'].to_numpy()])
+
+    x_data[0:array_0.shape[0],7] = np.zeros(array_0.shape[0])
+    x_data[array_0.shape[0]:array_0.shape[0]+array_1.shape[0],7] = np.zeros(array_1.shape[0])
+  
+    x_data[0:array_0.shape[0],8] = np.zeros(array_0.shape[0])
+    x_data[array_0.shape[0]:array_0.shape[0]+array_1.shape[0],8] = np.zeros(array_1.shape[0])
+
+    x_data[0:array_0.shape[0],9] = np.zeros(array_0.shape[0])
+    x_data[array_0.shape[0]:array_0.shape[0]+array_1.shape[0],9] = np.zeros(array_1.shape[0])
+
+    x_data[0:array_0.shape[0],10] = np.zeros(array_0.shape[0])
+    x_data[array_0.shape[0]:array_0.shape[0]+array_1.shape[0],10] = np.zeros(array_1.shape[0])
+
+    x_data[0:array_0.shape[0],11] = np.zeros(array_0.shape[0])
+    x_data[array_0.shape[0]:array_0.shape[0]+array_1.shape[0],11] = np.zeros(array_1.shape[0])
+
+    x_data[0:array_0.shape[0],12] = np.zeros(array_0.shape[0])
+    x_data[array_0.shape[0]:array_0.shape[0]+array_1.shape[0],12] = np.zeros(array_1.shape[0])
+
+    x_data[0:array_0.shape[0],13] = np.zeros(array_0.shape[0])
+    x_data[array_0.shape[0]:array_0.shape[0]+array_1.shape[0],13] = np.zeros(array_1.shape[0])
   
 
     clus_sort_index_0 = np.zeros(num_max_constits)
@@ -141,7 +179,7 @@ def process_qcd_events(array):
 
 
     #print(array_0.clus_pt.apply(lambda x: len(x)))
-    counter_cluster=6
+    counter_cluster=14
     for item in (array_0.loc[:,'clus_pt':'clusTime']).columns.values:
         array_0[item] = (array_0.apply(lambda x: x[item][x['cluster_jetIndex'] == int(x['jet_index'])], axis=1))
         #SORRY ABOUT THIS IT IS BAD CODE
@@ -235,7 +273,7 @@ def process_qcd_events(array):
     #print( (array_0.loc[:,'clus_pt':'clusTime']).columns.values + (array_0.loc[:,'nn_track_pt':'nn_track_SCTHits']).columns.values + (array_0.loc[:,'nn_MSeg_etaPos':'nn_MSeg_t0']).columns.values ) 
     #print( (array_0.loc[:,'clus_pt':'clusTime']).columns.values)
 
-    initial_names = ['label','mcEventWeight','flatWeight','jet_pt','jet_eta','jet_phi']
+    initial_names = ['label','mcEventWeight','flatWeight','jet_pt','jet_eta','jet_phi','jet_isClean_LooseBadLLP', 'aux_llp_Lxy','aux_llp_Lz','aux_llp_pt','aux_llp_eta','aux_llp_phi','llp_mH','llp_mS']
 
     constit_cols = ((array_0.loc[:,'clus_pt':'clusTime']).columns.values)
     constit_names = []
@@ -283,10 +321,12 @@ def process_bib_events(array):
     array['jet_pt_hlt']  = array.apply(lambda x: ([(x['jet_pt'][(int(x['test_0']))]) ]) , axis=1)  
     array['jet_eta_hlt']  = (array.apply(lambda x: ([(x['jet_eta'][(int(x['test_0']))]) ]) , axis=1)  )
     array['jet_phi_hlt']  = (array.apply(lambda x: ([(x['jet_phi'][(int(x['test_0']))]) ]) , axis=1)  )
+    array['jet_isClean_LooseBadLLP_hlt']  = (array.apply(lambda x: ([(x['jet_isClean_LooseBadLLP'][(int(x['test_0']))]) ]) , axis=1)  )
 
     array['jet_pt_hlt'] = array.jet_pt_hlt.apply(lambda x: x[0]) 
     array['jet_eta_hlt'] = array.jet_eta_hlt.apply(lambda x: x[0]) 
     array['jet_phi_hlt'] = array.jet_phi_hlt.apply(lambda x: x[0]) 
+    array['jet_isClean_LooseBadLLP_hlt'] = array.jet_isClean_LooseBadLLP.apply(lambda x: x[0]) 
 
 
     array = array.loc[ array.jet_pt_hlt >= 40000]
@@ -304,7 +344,7 @@ def process_bib_events(array):
     num_max_muonSegs = 70
 
     size_0 = array.shape[0] 
-    size_1 = (num_cluster_variables*num_max_constits) + (num_track_variables*num_max_tracks) + (num_muon_variables*num_max_muonSegs) + 6
+    size_1 = (num_cluster_variables*num_max_constits) + (num_track_variables*num_max_tracks) + (num_muon_variables*num_max_muonSegs) + 13
     x_data = np.full([size_0,size_1],np.nan, dtype='float32')
     
 
@@ -320,12 +360,28 @@ def process_bib_events(array):
 
     x_data[0:array.shape[0],5] = np.array([*array['jet_phi_hlt'].to_numpy()])
 
+    x_data[0:array.shape[0],6] = np.array([*array['jet_isClean_LooseBadLLP_hlt'].to_numpy()])
+
+    x_data[0:array.shape[0],7] = np.zeros(array.shape[0])
+ 
+    x_data[0:array.shape[0],8] = np.zeros(array.shape[0])
+
+    x_data[0:array.shape[0],9] = np.zeros(array.shape[0])
+
+    x_data[0:array.shape[0],10] = np.zeros(array.shape[0])
+
+    x_data[0:array.shape[0],11] = np.zeros(array.shape[0])
+
+    x_data[0:array.shape[0],12] = np.zeros(array.shape[0])
+
+    x_data[0:array.shape[0],13] = np.zeros(array.shape[0])
+
     clus_sort_index = np.zeros(num_max_constits)
     track_sort_index = np.zeros(num_max_constits)
 
   
     #print(array.clus_pt.apply(lambda x: len(x)))
-    counter_cluster=6
+    counter_cluster=14
     for item in (array.loc[:,'clus_pt':'clusTime']).columns.values:
         array[item] = (array.apply(lambda x: x[item][x['cluster_jetIndex'] == int(x['test_0'])], axis=1))
         #SORRY ABOUT THIS IT IS BAD CODE
@@ -377,7 +433,7 @@ def process_bib_events(array):
     #print( (array.loc[:,'clus_pt':'clusTime']).columns.values + (array.loc[:,'nn_track_pt':'nn_track_SCTHits']).columns.values + (array.loc[:,'nn_MSeg_etaPos':'nn_MSeg_t0']).columns.values ) 
     #print( (array.loc[:,'clus_pt':'clusTime']).columns.values)
 
-    initial_names = ['label','mcEventWeight','flatWeight','jet_pt','jet_eta','jet_phi']
+    initial_names = ['label','mcEventWeight','flatWeight','jet_pt','jet_eta','jet_phi', 'jet_isClean_LooseBadLLP', 'aux_llp_Lxy','aux_llp_Lz','aux_llp_pt','aux_llp_eta','aux_llp_phi','llp_mH','llp_mS']
 
     constit_cols = ((array.loc[:,'clus_pt':'clusTime']).columns.values)
     constit_names = []
@@ -406,7 +462,7 @@ def process_bib_events(array):
     #print(array)
 
 
-def process_signal_events(array):
+def process_signal_events(array, llp_mH, llp_mS):
     #gives two arrays in 1, [0] corresponds to first LLP, [1] correspodns to second LLP
     array['test'] = array.apply(lambda x: ([((x['jet_eta'] - i)**2+(x['jet_phi'] - j)**2) for i,j in zip(x['LLP_eta'],x['LLP_phi'])]) , axis=1)
     #array['test_0'] = (array.test[array['test'].apply(lambda x: len(x[0])) > 0]).apply(lambda x: np.argmin((x[0])*(1+(-2)*(min(x[0]) > 0.04))))
@@ -445,22 +501,52 @@ def process_signal_events(array):
     #print(array_0)
 
     array_0['jet_pt_llp']  = array_0.apply(lambda x: ([(x['jet_pt'][(int(x['test_0']))]) ]) , axis=1)  
+    array_0['jet_isClean_LooseBadLLP_llp']  = array_0.apply(lambda x: ([(x['jet_isClean_LooseBadLLP'][(int(x['test_0']))]) ]) , axis=1)  
     array_0['jet_eta_llp']  = (array_0.apply(lambda x: ([(x['jet_eta'][(int(x['test_0']))]) ]) , axis=1)  )
     array_0['jet_phi_llp']  = (array_0.apply(lambda x: ([(x['jet_phi'][(int(x['test_0']))]) ]) , axis=1)  )
+    array_0['aux_llp_Lxy']  = (array_0.apply(lambda x: ([(x['LLP_Lxy'][0]) ]) , axis=1)  )
+    array_0['aux_llp_Lz']  = (array_0.apply(lambda x: ([(x['LLP_Lz'][0]) ]) , axis=1)  )
+    array_0['aux_llp_pt']  = (array_0.apply(lambda x: ([(x['LLP_pt'][0]) ]) , axis=1)  )
+    array_0['aux_llp_eta']  = (array_0.apply(lambda x: ([(x['LLP_eta'][0]) ]) , axis=1)  )
+    array_0['aux_llp_phi']  = (array_0.apply(lambda x: ([(x['LLP_phi'][0]) ]) , axis=1)  )
+
     array_1['jet_pt_llp']  = (array_1.apply(lambda x: ([(x['jet_pt'][(int(x['test_1']))]) ]) , axis=1)  )
+    array_1['jet_isClean_LooseBadLLP_llp']  = (array_1.apply(lambda x: ([(x['jet_isClean_LooseBadLLP'][(int(x['test_1']))]) ]) , axis=1)  )
     array_1['jet_eta_llp']  = (array_1.apply(lambda x: ([(x['jet_eta'][(int(x['test_1']))]) ]) , axis=1)  )
     array_1['jet_phi_llp']  = (array_1.apply(lambda x: ([(x['jet_phi'][(int(x['test_1']))]) ]) , axis=1)  )
+    array_1['aux_llp_Lxy']  = (array_1.apply(lambda x: ([(x['LLP_Lxy'][1]) ]) , axis=1)  )
+    array_1['aux_llp_Lz']  = (array_1.apply(lambda x: ([(x['LLP_Lz'][1]) ]) , axis=1)  )
+    array_1['aux_llp_pt']  = (array_1.apply(lambda x: ([(x['LLP_pt'][1]) ]) , axis=1)  )
+    array_1['aux_llp_eta']  = (array_1.apply(lambda x: ([(x['LLP_eta'][1]) ]) , axis=1)  )
+    array_1['aux_llp_phi']  = (array_1.apply(lambda x: ([(x['LLP_phi'][1]) ]) , axis=1)  )
 
     array_0['jet_pt_llp'] = array_0.jet_pt_llp.apply(lambda x: x[0]) 
+    array_0['jet_isClean_LooseBadLLP_llp'] = array_0.jet_isClean_LooseBadLLP_llp.apply(lambda x: x[0]) 
     array_0['jet_eta_llp'] = array_0.jet_eta_llp.apply(lambda x: x[0]) 
     array_0['jet_phi_llp'] = array_0.jet_phi_llp.apply(lambda x: x[0]) 
+
+    array_0['aux_llp_Lxy'] = array_0.aux_llp_Lxy.apply(lambda x: x[0]) 
+    array_0['aux_llp_Lz'] = array_0.aux_llp_Lz.apply(lambda x: x[0]) 
+    array_0['aux_llp_pt'] = array_0.aux_llp_pt.apply(lambda x: x[0]) 
+    array_0['aux_llp_eta'] = array_0.aux_llp_eta.apply(lambda x: x[0]) 
+    array_0['aux_llp_phi'] = array_0.aux_llp_phi.apply(lambda x: x[0]) 
+
     array_0 = array_0.loc[ array_0.jet_pt_llp >= 40000]
     array_0 = array_0.loc[ array_0.jet_pt_llp < 500000]
     array_0 = array_0.loc[ array_0.jet_eta_llp >= -2.5]
     array_0 = array_0.loc[ array_0.jet_eta_llp <= 2.5]
+
     array_1['jet_pt_llp'] = array_1.jet_pt_llp.apply(lambda x: x[0]) 
+    array_1['jet_isClean_LooseBadLLP_llp'] = array_1.jet_isClean_LooseBadLLP_llp.apply(lambda x: x[0]) 
     array_1['jet_eta_llp'] = array_1.jet_eta_llp.apply(lambda x: x[0]) 
     array_1['jet_phi_llp'] = array_1.jet_phi_llp.apply(lambda x: x[0]) 
+
+    array_1['aux_llp_Lxy'] = array_1.aux_llp_Lxy.apply(lambda x: x[0]) 
+    array_1['aux_llp_Lz'] = array_1.aux_llp_Lz.apply(lambda x: x[0]) 
+    array_1['aux_llp_pt'] = array_1.aux_llp_pt.apply(lambda x: x[0]) 
+    array_1['aux_llp_eta'] = array_1.aux_llp_eta.apply(lambda x: x[0]) 
+    array_1['aux_llp_phi'] = array_1.aux_llp_phi.apply(lambda x: x[0]) 
+
     array_1 = array_1.loc[ array_1.jet_pt_llp >= 40000]
     array_1 = array_1.loc[ array_1.jet_pt_llp < 500000]
     array_1 = array_1.loc[ array_1.jet_eta_llp >= -2.5]
@@ -475,7 +561,7 @@ def process_signal_events(array):
     num_max_muonSegs = 70
 
     size_0 = array_0.shape[0] + array_1.shape[0]
-    size_1 = (num_cluster_variables*num_max_constits) + (num_track_variables*num_max_tracks) + (num_muon_variables*num_max_muonSegs) + 6
+    size_1 = (num_cluster_variables*num_max_constits) + (num_track_variables*num_max_tracks) + (num_muon_variables*num_max_muonSegs) + 13
     x_data = np.full([size_0,size_1],np.nan, dtype='float32')
     
 
@@ -497,13 +583,36 @@ def process_signal_events(array):
     x_data[0:array_0.shape[0],5] = np.array([*array_0['jet_phi_llp'].to_numpy()])
     x_data[array_0.shape[0]:array_0.shape[0]+array_1.shape[0],5] = np.array([*array_1['jet_phi_llp'].to_numpy()])
 
+    x_data[0:array_0.shape[0],6] = np.array([*array_0['jet_isClean_LooseBadLLP_llp'].to_numpy()])
+    x_data[array_0.shape[0]:array_0.shape[0]+array_1.shape[0],6] = np.array([*array_1['jet_isClean_LooseBadLLP_llp'].to_numpy()])
+
+    x_data[0:array_0.shape[0],7] = np.array([*array_0['aux_llp_Lxy'].to_numpy()])
+    x_data[array_0.shape[0]:array_0.shape[0]+array_1.shape[0],7] = np.array([*array_1['aux_llp_Lxy'].to_numpy()])
   
+    x_data[0:array_0.shape[0],8] = np.array([*array_0['aux_llp_Lz'].to_numpy()])
+    x_data[array_0.shape[0]:array_0.shape[0]+array_1.shape[0],8] = np.array([*array_1['aux_llp_Lz'].to_numpy()])
+
+    x_data[0:array_0.shape[0],9] = np.array([*array_0['aux_llp_pt'].to_numpy()])
+    x_data[array_0.shape[0]:array_0.shape[0]+array_1.shape[0],9] = np.array([*array_1['aux_llp_pt'].to_numpy()])
+
+    x_data[0:array_0.shape[0],10] = np.array([*array_0['aux_llp_eta'].to_numpy()])
+    x_data[array_0.shape[0]:array_0.shape[0]+array_1.shape[0],10] = np.array([*array_1['aux_llp_eta'].to_numpy()])
+
+    x_data[0:array_0.shape[0],11] = np.array([*array_0['aux_llp_phi'].to_numpy()])
+    x_data[array_0.shape[0]:array_0.shape[0]+array_1.shape[0],11] = np.array([*array_1['aux_llp_phi'].to_numpy()])
+
+    x_data[0:array_0.shape[0],12] = np.ones(array_0.shape[0])*llp_mH
+    x_data[array_0.shape[0]:array_0.shape[0]+array_1.shape[0],12] = np.ones(array_1.shape[0])*llp_mH
+
+    x_data[0:array_0.shape[0],13] = np.ones(array_0.shape[0])*llp_mS
+    x_data[array_0.shape[0]:array_0.shape[0]+array_1.shape[0],13] = np.ones(array_1.shape[0])*llp_mS
+
     clus_sort_index_0 = np.zeros(num_max_constits)
     track_sort_index_0 = np.zeros(num_max_constits)
     clus_sort_index_1 = np.zeros(num_max_tracks)
     track_sort_index_1 = np.zeros(num_max_tracks)
     #print(array_0.clus_pt.apply(lambda x: len(x)))
-    counter_cluster=6
+    counter_cluster=14
     for item in (array_0.loc[:,'clus_pt':'clusTime']).columns.values:
         array_0[item] = (array_0.apply(lambda x: x[item][x['cluster_jetIndex'] == int(x['test_0'])], axis=1))
         #SORRY ABOUT THIS IT IS BAD CODE
@@ -597,7 +706,7 @@ def process_signal_events(array):
     #print( (array_0.loc[:,'clus_pt':'clusTime']).columns.values + (array_0.loc[:,'nn_track_pt':'nn_track_SCTHits']).columns.values + (array_0.loc[:,'nn_MSeg_etaPos':'nn_MSeg_t0']).columns.values ) 
     #print( (array_0.loc[:,'clus_pt':'clusTime']).columns.values)
 
-    initial_names = ['label','mcEventWeight','flatWeight','jet_pt','jet_eta','jet_phi']
+    initial_names = ['label','mcEventWeight','flatWeight','jet_pt','jet_eta','jet_phi','jet_isClean_LooseBadLLP','aux_llp_Lxy','aux_llp_Lz','aux_llp_pt','aux_llp_eta','aux_llp_phi','llp_mH','llp_mS']
 
     constit_cols = ((array_0.loc[:,'clus_pt':'clusTime']).columns.values)
     constit_names = []
@@ -644,6 +753,7 @@ executor = concurrent.futures.ThreadPoolExecutor(64)
 print(multiprocessing.cpu_count())
 
 print("Loading data")
+start = time.time()
 '''
 #load_root("/data/fcormier/calRatio/fullRun2/output/signal-may7_2019/DAOD_EXOT15.17361415._000024.pool.root.1.root")
 root_file = uproot.open("/data/fcormier/calRatio/fullRun2/output/signal-may7_2019/DAOD_EXOT15.17361415._000024.pool.root.1.root")["trees_msVtx_"]
@@ -656,22 +766,43 @@ print(clus_pt_array[0])
 print(cluster_jetIndex_array[0])
 '''
 
-var_list_MC = ["HLT_jet_TAU60","HLT_jet_TAU100","HLT_jet_LLPNM","HLT_jet_LLPRO","HLT_jet_isBIB","HLT_jet_eta","HLT_jet_phi","mcEventWeight","LLP_eta","LLP_phi","LLP_Lxy","LLP_Lz","signal","QCD","BIB","jzN","jet_pt", "jet_eta", "jet_phi", "jet_E", "jet_index","cluster_jetIndex","clus_pt","clus_eta","clus_phi","e_PreSamplerB","e_EMB1","e_EMB2","e_EMB3","e_PreSamplerE","e_EME1","e_EME2","e_EME3","e_HEC0","e_HEC1","e_HEC2","e_HEC3","e_TileBar0","e_TileBar1","e_TileBar2","e_TileGap1","e_TileGap2","e_TileGap3","e_TileExt0","e_TileExt1","e_TileExt2","e_FCAL0","e_FCAL1","e_FCAL2","clusTime","nn_track_jetIndex","nn_track_pt","nn_track_eta","nn_track_phi","nn_track_d0","nn_track_z0","nn_track_PixelShared","nn_track_PixelSplit","nn_track_SCTShared","nn_track_PixelHoles","nn_track_SCTHoles","nn_track_PixelHits","nn_track_SCTHits","nn_MSeg_etaPos","nn_MSeg_phiPos","nn_MSeg_etaDir","nn_MSeg_phiDir","nn_MSeg_t0","nn_MSeg_jetIndex"]
+var_list_QCD = ["HLT_jet_TAU60","HLT_jet_TAU100","HLT_jet_LLPNM","HLT_jet_LLPRO","HLT_jet_isBIB","HLT_jet_eta","HLT_jet_phi","mcEventWeight","signal","QCD","BIB","jzN","jet_pt", "jet_eta", "jet_phi", "jet_isClean_LooseBadLLP", "jet_E", "jet_index","cluster_jetIndex","clus_pt","clus_eta","clus_phi","e_PreSamplerB","e_EMB1","e_EMB2","e_EMB3","e_PreSamplerE","e_EME1","e_EME2","e_EME3","e_HEC0","e_HEC1","e_HEC2","e_HEC3","e_TileBar0","e_TileBar1","e_TileBar2","e_TileGap1","e_TileGap2","e_TileGap3","e_TileExt0","e_TileExt1","e_TileExt2","e_FCAL0","e_FCAL1","e_FCAL2","clusTime","nn_track_jetIndex","nn_track_pt","nn_track_eta","nn_track_phi","nn_track_d0","nn_track_z0","nn_track_PixelShared","nn_track_PixelSplit","nn_track_SCTShared","nn_track_PixelHoles","nn_track_SCTHoles","nn_track_PixelHits","nn_track_SCTHits","nn_MSeg_etaPos","nn_MSeg_phiPos","nn_MSeg_etaDir","nn_MSeg_phiDir","nn_MSeg_t0","nn_MSeg_jetIndex"]
 
-var_list_data = ["HLT_jet_TAU60","HLT_jet_TAU100","HLT_jet_LLPNM","HLT_jet_LLPRO","HLT_jet_isBIB","HLT_jet_eta","HLT_jet_phi","HLT_jet_eta","HLT_jet_phi","signal","QCD","BIB","jzN","jet_pt", "jet_eta", "jet_phi", "jet_E", "jet_index","cluster_jetIndex","clus_pt","clus_eta","clus_phi","e_PreSamplerB","e_EMB1","e_EMB2","e_EMB3","e_PreSamplerE","e_EME1","e_EME2","e_EME3","e_HEC0","e_HEC1","e_HEC2","e_HEC3","e_TileBar0","e_TileBar1","e_TileBar2","e_TileGap1","e_TileGap2","e_TileGap3","e_TileExt0","e_TileExt1","e_TileExt2","e_FCAL0","e_FCAL1","e_FCAL2","clusTime","nn_track_jetIndex","nn_track_pt","nn_track_eta","nn_track_phi","nn_track_d0","nn_track_z0","nn_track_PixelShared","nn_track_PixelSplit","nn_track_SCTShared","nn_track_PixelHoles","nn_track_SCTHoles","nn_track_PixelHits","nn_track_SCTHits","nn_MSeg_etaPos","nn_MSeg_phiPos","nn_MSeg_etaDir","nn_MSeg_phiDir","nn_MSeg_t0","nn_MSeg_jetIndex"]
+var_list_MC = ["HLT_jet_TAU60","HLT_jet_TAU100","HLT_jet_LLPNM","HLT_jet_LLPRO","HLT_jet_isBIB","HLT_jet_eta","HLT_jet_phi","mcEventWeight","LLP_pt","LLP_eta","LLP_phi","LLP_Lxy","LLP_Lz","signal","QCD","BIB","jzN","jet_pt", "jet_eta", "jet_phi", "jet_isClean_LooseBadLLP", "jet_E", "jet_index","cluster_jetIndex","clus_pt","clus_eta","clus_phi","e_PreSamplerB","e_EMB1","e_EMB2","e_EMB3","e_PreSamplerE","e_EME1","e_EME2","e_EME3","e_HEC0","e_HEC1","e_HEC2","e_HEC3","e_TileBar0","e_TileBar1","e_TileBar2","e_TileGap1","e_TileGap2","e_TileGap3","e_TileExt0","e_TileExt1","e_TileExt2","e_FCAL0","e_FCAL1","e_FCAL2","clusTime","nn_track_jetIndex","nn_track_pt","nn_track_eta","nn_track_phi","nn_track_d0","nn_track_z0","nn_track_PixelShared","nn_track_PixelSplit","nn_track_SCTShared","nn_track_PixelHoles","nn_track_SCTHoles","nn_track_PixelHits","nn_track_SCTHits","nn_MSeg_etaPos","nn_MSeg_phiPos","nn_MSeg_etaDir","nn_MSeg_phiDir","nn_MSeg_t0","nn_MSeg_jetIndex"]
+
+var_list_data = ["HLT_jet_TAU60","HLT_jet_TAU100","HLT_jet_LLPNM","HLT_jet_LLPRO","HLT_jet_isBIB","HLT_jet_eta","HLT_jet_phi","HLT_jet_eta","HLT_jet_phi","signal","QCD","BIB","jzN","jet_pt", "jet_eta", "jet_phi", "jet_isClean_LooseBadLLP", "jet_E", "jet_index","cluster_jetIndex","clus_pt","clus_eta","clus_phi","e_PreSamplerB","e_EMB1","e_EMB2","e_EMB3","e_PreSamplerE","e_EME1","e_EME2","e_EME3","e_HEC0","e_HEC1","e_HEC2","e_HEC3","e_TileBar0","e_TileBar1","e_TileBar2","e_TileGap1","e_TileGap2","e_TileGap3","e_TileExt0","e_TileExt1","e_TileExt2","e_FCAL0","e_FCAL1","e_FCAL2","clusTime","nn_track_jetIndex","nn_track_pt","nn_track_eta","nn_track_phi","nn_track_d0","nn_track_z0","nn_track_PixelShared","nn_track_PixelSplit","nn_track_SCTShared","nn_track_PixelHoles","nn_track_SCTHoles","nn_track_PixelHits","nn_track_SCTHits","nn_MSeg_etaPos","nn_MSeg_phiPos","nn_MSeg_etaDir","nn_MSeg_phiDir","nn_MSeg_t0","nn_MSeg_jetIndex"]
 
 df = pd.DataFrame()
 
-print(glob("/data/fcormier/calRatio/fullRun2/grid_output_1/signal/*/DAOD*.root"))
-
 counter=0
 
-start = time.time()
+for arrays in uproot.iterate("/data/fcormier/calRatio/fullRun2/grid_output_1/qcd/*/user.fcormier*.root", "trees_msVtx_",
+        var_list_QCD,entrysteps=500000,executor=executor, outputtype=pd.DataFrame):
+    #do_something_with(arrays)
+    print("QCD")
+    print("It has been " + (str(time.time() - start)) + "seconds since start")
+    counter = counter+1
+    print(counter)
+    signal_arrays = arrays[arrays.signal == 1]
+    QCD_arrays = arrays[arrays.QCD == 1]
+    BIB_arrays = arrays[arrays.BIB == 1]
 
-for arrays in uproot.iterate("/data/fcormier/calRatio/fullRun2/grid_output_1/signal/*/user.fcormier*.root", "trees_msVtx_",
-        var_list_MC,entrysteps=500000,executor=executor, outputtype=pd.DataFrame):
+    if len(QCD_arrays) > 0:
+        df_qcd = process_qcd_events(QCD_arrays)
+        df = df.append(df_qcd, ignore_index=False)
+
+
+
+for path,entries_start,entries_stop,arrays in uproot.iterate("/data/fcormier/calRatio/fullRun2/grid_output_1/signal/*/user.fcormier*.root", "trees_msVtx_",
+        var_list_MC,entrysteps=500000,executor=executor, outputtype=pd.DataFrame, reportpath=True, reportentries=True):
     print("Signal")
     print("It has been " + (str(time.time() - start)) + "seconds since start")
+    llp_mH = int(find_number(path,"mH")[0])
+    llp_mS = int(find_number(path,"mS")[0])
+    print("LLP mH: " + str(llp_mH) )
+    print("LLP mS: " + str(llp_mS) )
+    print("Entries start: " + str(entries_start) )
+    print("Entries stop: " + str(entries_stop) )
     counter = counter+1
     print(counter)
     #do_something_with(arrays)
@@ -684,7 +815,7 @@ for arrays in uproot.iterate("/data/fcormier/calRatio/fullRun2/grid_output_1/sig
     #print(len(BIB_arrays))
 
     if len(signal_arrays) > 0:
-        df_signal = process_signal_events(signal_arrays)
+        df_signal = process_signal_events(signal_arrays, llp_mH, llp_mS)
         df = df.append(df_signal, ignore_index=False)
 
     if len(BIB_arrays) > 0:
@@ -717,37 +848,28 @@ for arrays in uproot.iterate("/data/fcormier/calRatio/fullRun2/grid_output_1/bib
         df = df.append(df_bib, ignore_index=False)
 
 
-for arrays in uproot.iterate("/data/fcormier/calRatio/fullRun2/grid_output_1/signal/*/user.fcormier*.root", "trees_msVtx_",
-        var_list_MC,entrysteps=500000,executor=executor, outputtype=pd.DataFrame):
-    #do_something_with(arrays)
-    print("QCD")
-    print("It has been " + (str(time.time() - start)) + "seconds since start")
-    counter = counter+1
-    print(counter)
-    signal_arrays = arrays[arrays.signal == 1]
-    QCD_arrays = arrays[arrays.signal == 1]
-    BIB_arrays = arrays[arrays.BIB == 1]
-
-    if len(QCD_arrays) > 0:
-        df_qcd = process_qcd_events(QCD_arrays)
-        df = df.append(df_qcd, ignore_index=False)
-
 
 #print(df)
 min_pt = 40000
-max_pt = 200000
+max_pt = 300000
+print("Saving raw file...")
+df.to_pickle("raw_output")
+'''
+df = pd.read_pickle("raw_output")
+'''
 print("Plotting...")
 print("It has been " + (str(time.time() - start)) + "seconds since start")
 plot_vars(df)
-print("Saving raw file...")
-df.to_pickle("raw_output")
 print("Flattening...")
+min_pt = 40000
+max_pt = 300000
 print("It has been " + (str(time.time() - start)) + "seconds since start")
 df = flatten(df, min_pt, max_pt, 20)
 print("pre-processing...")
 print("It has been " + (str(time.time() - start)) + "seconds since start")
 df = pre_process(df, 0, max_pt)
 plot_vars(df, prefix="_post_processing")
+df = parametrize_masses(df)
 print("Saving processed file...")
 print("It has been " + (str(time.time() - start)) + "seconds since start")
 df.to_pickle("processed_output")

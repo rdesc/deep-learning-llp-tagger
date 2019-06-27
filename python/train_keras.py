@@ -34,6 +34,7 @@ import matplotlib.pyplot as plt
 
 from evaluate_training import *
 
+np.set_printoptions(threshold='nan')
 
 session_conf = tf.ConfigProto(intra_op_parallelism_threads=64, inter_op_parallelism_threads=64)
 tf.set_random_seed(1)
@@ -42,11 +43,27 @@ keras.backend.set_session(sess)
 
 df = pd.read_pickle("processed_output")
 df = df.fillna(0)
+print(list(df.columns))
 df = df.sample(frac=1).reset_index(drop=True)
+ 
 
 del df['track_sign']
-del df['sum_eFrac']
 del df['clus_sign']
+
+auxDelete = [col for col in df if col.startswith("aux")]
+for item in auxDelete:
+    del df[item]
+
+deleteTime = False
+
+if deleteTime:
+    clusTimeDelete = [col for col in df if col.startswith("clusTime")]
+    for item in clusTimeDelete:
+        del df[item]
+
+    segTimeDelete = [col for col in df  if col.startswith("nn_MSeg_t0")]
+    for item in segTimeDelete:
+        del df[item]
 
 print("Length of Signal is: " + str(df[df.label==1].shape[0]) )
 print("Length of QCD is: " + str(df[df.label==0].shape[0]) )
@@ -54,35 +71,67 @@ print("Length of BIB is: " + str(df[df.label==2].shape[0]) )
 
 Y = df['label']
 weights = df['flatWeight']
-X= df.iloc[:,3:df.shape[1]]
+X= df.loc[:,'jet_pt':'nn_MSeg_t0_69']
+Z = df.loc[:,'llp_mH':'llp_mS']
 
-X_train, X_test, y_train, y_test, weights_train, weights_test = train_test_split(X, Y, weights, test_size = 0.1)
+X_train, X_test, y_train, y_test, weights_train, weights_test, Z_train, Z_test = train_test_split(X, Y, weights, Z, test_size = 0.1)
 
-model_to_do = "lstm"
+#model_to_do = "lstm_"+str(deleteTime)+"DeleteTime"
+model_to_do = "dense"
 
 
 y_val = np_utils.to_categorical(y_test)
 y_train = np_utils.to_categorical(y_train)
 
-if(model_to_do == "lstm"):
+if("lstm" in model_to_do):
 
-    X_train_constit = X_train.loc[:,'clus_pt_0':'clusTime_29']
+    if deleteTime:
+        X_train_constit = X_train.loc[:,'clus_pt_0':'e_FCAL2_29']
+    else:
+        X_train_constit = X_train.loc[:,'clus_pt_0':'clusTime_29']
+
     X_train_track = X_train.loc[:,'nn_track_pt_0':'nn_track_SCTHits_19']
-    X_train_MSeg = X_train.loc[:,'nn_MSeg_etaPos_0':'nn_MSeg_t0_69']
+    if deleteTime:
+        X_train_MSeg = X_train.loc[:,'nn_MSeg_etaPos_0':'nn_MSeg_phiDir_69']
+    else:
+        X_train_MSeg = X_train.loc[:,'nn_MSeg_etaPos_0':'nn_MSeg_t0_69']
     X_train_jet = X_train.loc[:,'jet_pt':'jet_phi']
+    #X_train_jet.join(X_train.loc[:,'llp_mH'])
+    #X_train_jet.join(X_train.loc[:,'llp_mS'])
 
-    X_test_constit = X_test.loc[:,'clus_pt_0':'clusTime_29']
+    if deleteTime:
+        X_test_constit = X_test.loc[:,'clus_pt_0':'e_FCAL2_29']
+    else:
+        X_test_constit = X_test.loc[:,'clus_pt_0':'clusTime_29']
     X_test_track = X_test.loc[:,'nn_track_pt_0':'nn_track_SCTHits_19']
-    X_test_MSeg = X_test.loc[:,'nn_MSeg_etaPos_0':'nn_MSeg_t0_69']
+    if deleteTime:
+        X_test_MSeg = X_test.loc[:,'nn_MSeg_etaPos_0':'nn_MSeg_phiDir_69']
+    else:
+        X_test_MSeg = X_test.loc[:,'nn_MSeg_etaPos_0':'nn_MSeg_t0_69']
     X_test_jet = X_test.loc[:,'jet_pt':'jet_phi']
+    #X_test_jet.join(X_test.loc[:,'llp_mH'])
+    #X_test_jet.join(X_test.loc[:,'llp_mS'])
 
-    num_constit_vars = 28
+    if deleteTime:
+        num_constit_vars = 27
+    else:
+        num_constit_vars = 28
     num_track_vars = 12
-    num_MSeg_vars = 5
+    if deleteTime:
+        num_MSeg_vars = 4
+    else:
+        num_MSeg_vars = 5
 
     num_max_constits = 30
     num_max_tracks = 20
     num_max_MSegs = 70
+
+    print(X_train)
+
+    print(X_train_constit.shape[0])
+    print(num_max_constits)
+    print(num_constit_vars)
+    print(X_train.loc[:,'clus_pt_0':'clusTime_29'])
 
     X_train_constit = X_train_constit.values.reshape(X_train_constit.shape[0],num_max_constits,num_constit_vars)
     X_train_track = X_train_track.values.reshape(X_train_track.shape[0],num_max_tracks,num_track_vars)
@@ -91,6 +140,7 @@ if(model_to_do == "lstm"):
     X_test_constit = X_test_constit.values.reshape(X_test_constit.shape[0],num_max_constits,num_constit_vars)
     X_test_track = X_test_track.values.reshape(X_test_track.shape[0],num_max_tracks,num_track_vars)
     X_test_MSeg = X_test_MSeg.values.reshape(X_test_MSeg.shape[0],num_max_MSegs,num_MSeg_vars)
+
 
     constit_input = Input(shape=(X_train_constit[0].shape),dtype='float32',name='constit_input')
     constit_out = LSTM(num_constit_vars)(constit_input)
@@ -108,9 +158,9 @@ if(model_to_do == "lstm"):
 
     x = keras.layers.concatenate([constit_out, track_out, MSeg_out, jet_input])
 
-    x = Dense(120, activation='relu')(x)
+    x = Dense(512, activation='relu')(x)
     x = Dropout(0.2)(x)
-    x = Dense(12, activation='relu')(x)
+    x = Dense(64, activation='relu')(x)
     x = Dropout(0.2)(x)
 
     main_output = Dense(3, activation='softmax', name='main_output')(x)
@@ -119,18 +169,16 @@ if(model_to_do == "lstm"):
 
     plot_model(model, to_file='plots/model_plot.png', show_shapes=True, show_layer_names=True)
 
-    n_optimizer = keras.optimizers.Nadam(lr=0.1, beta_1=0.9, beta_2=0.999, epsilon=None, schedule_decay=0.0004)
-    model.compile(optimizer=n_optimizer, loss='categorical_crossentropy',
-        loss_weights=[1., 0.2, 0.2, 0.2], metrics=['accuracy'])
+    model.compile(optimizer='Adadelta', loss='categorical_crossentropy',
+        loss_weights=[1., 0.1, 0.4, 0.3], metrics=['accuracy'])
     model.summary()
-
-    history = model.fit([X_train_constit, X_train_track, X_train_MSeg, X_train_jet.values], [y_train, y_train, y_train, y_train], sample_weight= [weights_train.values, weights_train.values, weights_train.values, weights_train.values], epochs=20, batch_size=512, validation_data = ([X_test_constit, X_test_track, X_test_MSeg, X_test_jet.values], [y_val, y_val, y_val, y_val], [weights_test.values, weights_test.values, weights_test.values,weights_test.values]),callbacks=[
+    history = model.fit([X_train_constit, X_train_track, X_train_MSeg, X_train_jet.values], [y_train, y_train, y_train, y_train], sample_weight= [weights_train.values, weights_train.values, weights_train.values, weights_train.values], epochs=100, batch_size=512, validation_data = ([X_test_constit, X_test_track, X_test_MSeg, X_test_jet.values], [y_val, y_val, y_val, y_val], [weights_test.values, weights_test.values, weights_test.values,weights_test.values]),callbacks=[
                         EarlyStopping(
                             verbose=True,
-                            patience=5,
+                            patience=20,
                             monitor='val_main_output_acc'),
                         ModelCheckpoint(
-                            'keras_outputs/checkpoint',
+                            'keras_outputs/checkpoint_'+model_to_do,
                             monitor='val_main_output_acc',
                             verbose=True,
                             save_best_only=True)])
@@ -143,7 +191,7 @@ if(model_to_do == "lstm"):
     plt.ylabel('accuracy')
     plt.xlabel('epoch')
     plt.legend(['train', 'test'], loc='upper left')
-    plt.savefig("plots/accuracy_monitoring"+ ".pdf", format='pdf', transparent=True)
+    plt.savefig("plots/accuracy_monitoring"+ model_to_do +".pdf", format='pdf', transparent=True)
     plt.clf()
     plt.cla()
     plt.figure()
@@ -154,13 +202,19 @@ if(model_to_do == "lstm"):
     plt.ylabel('loss')
     plt.xlabel('epoch')
     plt.legend(['train', 'test'], loc='upper left')
-    plt.savefig("plots/loss_monitoring"+ ".pdf", format='pdf', transparent=True)
+    plt.savefig("plots/loss_monitoring"+ model_to_do +".pdf", format='pdf', transparent=True)
 
-    evaluate_model(X_test, y_test, weights_test, model_to_do)
+    evaluate_model(X_test, y_test, weights_test, Z_test, model_to_do, deleteTime)
 
     
 
 if (model_to_do == "dense"):
+
+    print(list(X_train.columns))
+    del X_train['llp_mH']
+    del X_train['llp_mS']
+    del X_test['llp_mH']
+    del X_test['llp_mS']
 
     model = Sequential()
 
@@ -179,15 +233,14 @@ if (model_to_do == "dense"):
     model.add(Activation('softmax'))
     model.compile(optimizer='Adam', loss='categorical_crossentropy', metrics=['accuracy'])
     model.summary()
-
-
+    '''
     history = model.fit(X_train.values, y_train, sample_weight= weights_train.values, epochs=100, batch_size=512, validation_data = (X_test.values, y_val, weights_test.values),callbacks=[
                         EarlyStopping(
                             verbose=True,
                             patience=20,
                             monitor='val_acc'),
                         ModelCheckpoint(
-                            'keras_outputs/checkpoint',
+                            'keras_outputs/checkpoint_'+model_to_do,
                             monitor='val_acc',
                             verbose=True,
                             save_best_only=True)])
@@ -212,5 +265,5 @@ if (model_to_do == "dense"):
     plt.xlabel('epoch')
     plt.legend(['train', 'test'], loc='upper left')
     plt.savefig("plots/loss_monitoring"+ ".pdf", format='pdf', transparent=True)
-
-    evaluate_model(X_test, y_test, weights_test, model_to_do)
+    '''
+    evaluate_model(X_test, y_test, weights_test, Z_test,  model_to_do, deleteTime)

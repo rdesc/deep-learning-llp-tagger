@@ -1,10 +1,10 @@
 import numpy as np
+
 import seaborn as sns
 
 import pandas as pd
 
 def pre_process(data, min_pt, max_pt):
-
 
     #SCALE JET PT
     data["jet_pt"] = data["jet_pt"].sub(min_pt, axis='index')
@@ -43,10 +43,12 @@ def pre_process(data, min_pt, max_pt):
     data[filter_clus_pt] = data[filter_clus_pt].divide( (max_pt - min_pt), axis='index')
 
     #SCALE Cluster Energy Fraction
-
+    #TODO: this is jet-level (ie all constituents), would make more sense for this to be constituent level
     filter_clus_eFrac = [col for col in data if col.startswith("e_")]
     data['sum_eFrac'] = data[filter_clus_eFrac].sum(axis=1)
     data[filter_clus_eFrac] = data[filter_clus_eFrac].divide(data['sum_eFrac'], axis='index')
+ 
+    del data['sum_eFrac']
 
     #Now For Tracks
 
@@ -96,6 +98,8 @@ def pre_process(data, min_pt, max_pt):
 
     #Subtract the phi of the jet from all MSegs Dir
     data[filter_MSeg_phiDir] = data[filter_MSeg_phiDir].sub(data["jet_phi"], axis='index')
+ 
+    print(data)
 
 
     return data

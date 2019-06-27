@@ -39,6 +39,8 @@ import seaborn as sns
 import re
 import sklearn
 
+from numpy import unravel_index
+
 def find_threshold(prediction,y, weight, perc, label):
 
 
@@ -67,6 +69,19 @@ def find_threshold(prediction,y, weight, perc, label):
 
 
     return threshold, leftovers
+
+def signal_llp_efficiencies(prediction,y_test,Z_test):
+    sig_rows = np.where(y_test==1)
+    prediction = prediction[sig_rows]
+    Z_test = Z_test.iloc[sig_rows]
+    mass_array = (Z_test.groupby(['llp_mH','llp_mS']).size().reset_index().rename(columns={0:'count'}))
+    for item,mH,mS in zip(mass_array['count'],mass_array['llp_mH'],mass_array['llp_mS']):
+        temp_array = prediction[ (Z_test['llp_mH'] == mH) & (Z_test['llp_mS'] == mS) ]
+        temp_max = np.argmax(temp_array,axis=1)
+        temp_num_signal_best = len(temp_max[temp_max==1])
+        temp_eff = temp_num_signal_best / temp_array.shape[0]
+        print("mH: " + str(mH) + ", mS: " + str(mS) + ", Eff: " + str(temp_eff))
+
 
 def make_multi_roc_curve(prediction,y,weight,threshold,label,leftovers):
     tag_eff = []
@@ -146,41 +161,71 @@ def get_efficiencies_with_weights(py, y ,weight, threshold):
 
 def plot_prediction_histograms(destination,
                                 prediction,
-                                labels, weight):
-    #plt.cla()
-    #plt.figure()
-    #print(prediction)
-    #prediction = np.asarray(prediction[0])
+                                labels, weight, model_to_do):
+
     sig_rows = np.where(labels==1)
     bkg_rows = np.where(labels==0)
     bib_rows = np.where(labels==2)
     #print(sig_rows)
-    plt.hist(prediction[sig_rows][:,1], weights=weight.values[sig_rows], color='red',alpha=0.5,linewidth=0, histtype='stepfilled',bins=50,label="Signal")
-    plt.hist(prediction[bkg_rows][:,1], weights=weight.values[bkg_rows], color='blue',alpha=0.5, linewidth=0,histtype='stepfilled',bins=50,label="QCD")
-    plt.hist(prediction[bib_rows][:,1], weights=weight.values[bib_rows], color='green',alpha=0.5, linewidth=0,histtype='stepfilled',bins=50,label="BIB")
-    plt.xlabel("Signal NN weight")
-    plt.legend()
-    plt.savefig(destination+"/sig_predictions"+ ".pdf", format='pdf', transparent=True)
     plt.clf()
 
-    plt.hist(prediction[sig_rows][:,0], weights=weight.values[sig_rows], color='red',alpha=0.5,linewidth=0, histtype='stepfilled',bins=50,label="Signal")
-    plt.hist(prediction[bkg_rows][:,0], weights=weight.values[bkg_rows], color='blue',alpha=0.5, linewidth=0,histtype='stepfilled',bins=50,label="QCD")
-    plt.hist(prediction[bib_rows][:,0], weights=weight.values[bib_rows], color='green',alpha=0.5, linewidth=0,histtype='stepfilled',bins=50,label="BIB")
-    plt.xlabel("QCD NN weight")
-    plt.legend()
-    plt.savefig(destination+"/qcd_predictions"+ ".pdf", format='pdf', transparent=True)
+    fig,ax = plt.subplots()
+    textstr = model_to_do 
+
+    ax.hist(prediction[sig_rows][:,1], weights=weight.values[sig_rows], color='red',alpha=0.5,linewidth=0, histtype='stepfilled',bins=50,label="Signal")
+    ax.hist(prediction[bkg_rows][:,1], weights=weight.values[bkg_rows], color='blue',alpha=0.5, linewidth=0,histtype='stepfilled',bins=50,label="QCD")
+    ax.hist(prediction[bib_rows][:,1], weights=weight.values[bib_rows], color='green',alpha=0.5, linewidth=0,histtype='stepfilled',bins=50,label="BIB")
+    plt.yscale('log', nonposy='clip')
+    ax.set_xlabel("Signal NN weight")
+    ax.legend()
+
+    #matplotlib.patch.Patch properties
+    props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
+    # place a text box in upper left in axes coords
+    ax.text(0.05, 0.8, textstr, color='black', transform=ax.transAxes, 
+        bbox=dict(facecolor='none', edgecolor='black', boxstyle='round,pad=1'))
+
+    plt.savefig(destination+"sig_predictions"+ ".pdf", format='pdf', transparent=True)
     plt.clf()
 
-    plt.hist(prediction[sig_rows][:,2], weights=weight.values[sig_rows], color='red',alpha=0.5,linewidth=0, histtype='stepfilled',bins=50,label="Signal")
-    plt.hist(prediction[bkg_rows][:,2], weights=weight.values[bkg_rows], color='blue',alpha=0.5, linewidth=0,histtype='stepfilled',bins=50,label="QCD")
-    plt.hist(prediction[bib_rows][:,2], weights=weight.values[bib_rows], color='green',alpha=0.5, linewidth=0,histtype='stepfilled',bins=50,label="BIB")
-    plt.xlabel("BIB NN weight")
-    plt.legend()
-    plt.savefig(destination+"/bib_predictions"+ ".pdf", format='pdf', transparent=True)
+
+    fig,ax = plt.subplots()
+    ax.hist(prediction[sig_rows][:,0], weights=weight.values[sig_rows], color='red',alpha=0.5,linewidth=0, histtype='stepfilled',bins=50,label="Signal")
+    ax.hist(prediction[bkg_rows][:,0], weights=weight.values[bkg_rows], color='blue',alpha=0.5, linewidth=0,histtype='stepfilled',bins=50,label="QCD")
+    ax.hist(prediction[bib_rows][:,0], weights=weight.values[bib_rows], color='green',alpha=0.5, linewidth=0,histtype='stepfilled',bins=50,label="BIB")
+    plt.yscale('log', nonposy='clip')
+    ax.set_xlabel("QCD NN weight")
+    ax.legend()
+
+    #matplotlib.patch.Patch properties
+    props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
+    # place a text box in upper left in axes coords
+    ax.text(0.05, 0.8, textstr, color='black', transform=ax.transAxes, 
+        bbox=dict(facecolor='none', edgecolor='black', boxstyle='round,pad=1'))
+
+    plt.savefig(destination+"qcd_predictions"+ ".pdf", format='pdf', transparent=True)
+    plt.clf()
+
+
+    fig,ax = plt.subplots()
+    ax.hist(prediction[sig_rows][:,2], weights=weight.values[sig_rows], color='red',alpha=0.5,linewidth=0, histtype='stepfilled',bins=50,label="Signal")
+    ax.hist(prediction[bkg_rows][:,2], weights=weight.values[bkg_rows], color='blue',alpha=0.5, linewidth=0,histtype='stepfilled',bins=50,label="QCD")
+    ax.hist(prediction[bib_rows][:,2], weights=weight.values[bib_rows], color='green',alpha=0.5, linewidth=0,histtype='stepfilled',bins=50,label="BIB")
+    plt.yscale('log', nonposy='clip')
+    ax.set_xlabel("BIB NN weight")
+    ax.legend()
+
+    #matplotlib.patch.Patch properties
+    props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
+    # place a text box in upper left in axes coords
+    ax.text(0.05, 0.8, textstr, color='black', transform=ax.transAxes, 
+        bbox=dict(facecolor='none', edgecolor='black', boxstyle='round,pad=1'))
+
+    plt.savefig(destination+"bib_predictions"+ ".pdf", format='pdf', transparent=True)
     plt.clf()
     return
 
-def evaluate_model(X_test, y_test, weights_test, model_to_do):
+def evaluate_model(X_test, y_test, weights_test, Z_test,  model_to_do, deleteTime):
 
     if (model_to_do == "dense"):
 
@@ -200,21 +245,43 @@ def evaluate_model(X_test, y_test, weights_test, model_to_do):
         model.add(Activation('softmax'))
         model.compile(optimizer='Adam', loss='categorical_crossentropy', metrics=['accuracy'])
         model.summary()
-        model.load_weights("keras_outputs/checkpoint")
+        model.load_weights("keras_outputs/checkpoint_"+model_to_do)
 
-    if (model_to_do == "lstm"):
+    if ("lstm" in model_to_do):
 
-        num_constit_vars = 28
+        if deleteTime:
+            num_constit_vars = 27
+        else:
+            num_constit_vars = 28
         num_track_vars = 12
-        num_MSeg_vars = 5
+        if deleteTime:
+            num_MSeg_vars = 4
+        else:
+            num_MSeg_vars = 5
 
         num_max_constits = 30
         num_max_tracks = 20
         num_max_MSegs = 70
 
+
+        if deleteTime:
+            X_test_constit = X_test.loc[:,'clus_pt_0':'e_FCAL2_29']
+        else:
+            X_test_constit = X_test.loc[:,'clus_pt_0':'clusTime_29']
+        X_test_track = X_test.loc[:,'nn_track_pt_0':'nn_track_SCTHits_19']
+        if deleteTime:
+            X_test_MSeg = X_test.loc[:,'nn_MSeg_etaPos_0':'nn_MSeg_phiDir_69']
+        else:
+            X_test_MSeg = X_test.loc[:,'nn_MSeg_etaPos_0':'nn_MSeg_t0_69']
+        X_test_jet = X_test.loc[:,'jet_pt':'jet_phi']
+        #X_test_jet.join(X_test.loc[:,'llp_mH'])
+        #X_test_jet.join(X_test.loc[:,'llp_mS'])
+
         X_test_constit = X_test_constit.values.reshape(X_test_constit.shape[0],num_max_constits,num_constit_vars)
         X_test_track = X_test_track.values.reshape(X_test_track.shape[0],num_max_tracks,num_track_vars)
         X_test_MSeg = X_test_MSeg.values.reshape(X_test_MSeg.shape[0],num_max_MSegs,num_MSeg_vars)
+
+        print( "CONSTIT SIZE: " + str(X_test_constit[0].shape) )
 
         constit_input = Input(shape=(X_test_constit[0].shape),dtype='float32',name='constit_input')
         constit_out = LSTM(num_constit_vars)(constit_input)
@@ -232,9 +299,9 @@ def evaluate_model(X_test, y_test, weights_test, model_to_do):
 
         x = keras.layers.concatenate([constit_out, track_out, MSeg_out, jet_input])
 
-        x = Dense(120, activation='relu')(x)
+        x = Dense(512, activation='relu')(x)
         x = Dropout(0.2)(x)
-        x = Dense(12, activation='relu')(x)
+        x = Dense(64, activation='relu')(x)
         x = Dropout(0.2)(x)
 
         main_output = Dense(3, activation='softmax', name='main_output')(x)
@@ -242,11 +309,16 @@ def evaluate_model(X_test, y_test, weights_test, model_to_do):
         model = Model(inputs=[constit_input, track_input, MSeg_input, jet_input], outputs=[main_output, constit_output, track_output, MSeg_output])
 
 
-        n_optimizer = keras.optimizers.Nadam(lr=0.1, beta_1=0.9, beta_2=0.999, epsilon=None, schedule_decay=0.0004)
-        model.compile(optimizer=n_optimizer, loss='categorical_crossentropy',
-            loss_weights=[1., 0.2, 0.2, 0.2], metrics=['accuracy'])
+        model.compile(optimizer='Adadelta', loss='categorical_crossentropy',
+            loss_weights=[1., 0.1, 0.4, 0.3], metrics=['accuracy'])
+        model.load_weights("keras_outputs/checkpoint_"+model_to_do)
 
-    prediction = model.predict(X_test.values, verbose=True)
+    if (model_to_do == "dense"):
+	    prediction = model.predict(X_test.values, verbose=True)
+
+    elif ("lstm" in model_to_do):
+        prediction = model.predict([X_test_constit, X_test_track, X_test_MSeg, X_test_jet], verbose = True)
+        prediction = prediction[0]
 
     #print(y_test==2)
     #print(weights_test)
@@ -257,14 +329,17 @@ def evaluate_model(X_test, y_test, weights_test, model_to_do):
 
     weights_test[y_test==0] *= sig_weight/qcd_weight
     weights_test[y_test==2] *= sig_weight/bib_weight
-    destination = "plots/"
-    plot_prediction_histograms(destination,prediction,y_test, weights_test)
+    destination = "plots/trainingDiagrams/"+model_to_do + "_"
+    plot_prediction_histograms(destination,prediction,y_test, weights_test, model_to_do)
     #threshold_array = np.logspace(-0.1,-0.001,30)[::-3]
     plt.figure()
-    #threshold_array = [0.9999,(1-0.001),(1-0.003),(1-0.009),(1-0.023),(1-0.059),(1-0.151),(1-0.389),0.001]
-    threshold_array = [0.99,(1-0.03),(1-0.09),(1-0.23),(1-0.59),0.001]
+    fig,ax = plt.subplots()
+    threshold_array = [0.9999,(1-0.001),(1-0.003),(1-0.009),(1-0.023),(1-0.059),(1-0.151),(1-0.389),0.001]
+    counter=0
+    #threshold_array = [0.99,(1-0.03),(1-0.09),(1-0.23),(1-0.59),0.001]
     #threshold_array =  np.logspace(-4,0,30)[::-3]
     #for percent in range(0,100,10):
+    signal_llp_efficiencies(prediction,y_test,Z_test)
     for item in threshold_array:
         test_perc = item*100
         test_label = 2
@@ -273,14 +348,23 @@ def evaluate_model(X_test, y_test, weights_test, model_to_do):
         test_threshold, leftovers = find_threshold(prediction,y_test, weights_test, test_perc, test_label)
         bkg_eff, tag_eff, roc_auc, sig_ratio, qcd_ratio = make_multi_roc_curve(prediction,y_test,weights_test,test_threshold,test_label,leftovers)
         print("AUC: " + str(roc_auc) )
-        plt.plot(tag_eff*sig_ratio, (1.0-bkg_eff)*qcd_ratio, label= f"BIB Eff: {(-item+1):.3f}" +f", AUC: {roc_auc:.3f}")
-        plt.xlabel("LLP Tagging Efficiency")
-        plt.ylabel("QCD Efficiency")
+        ax.plot(tag_eff*sig_ratio, (1.0-bkg_eff)*qcd_ratio, label= f"BIB Eff: {(-item+1):.3f}" +f", AUC: {roc_auc:.3f}")
+        ax.set_xlabel("LLP Tagging Efficiency")
+        ax.set_ylabel("QCD Efficiency")
         axes = plt.gca()
         axes.set_xlim([0,1])
+        counter=counter+1
+        
         #axes.set_ylim([0,1])
+    #matplotlib.patch.Patch properties
+    props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
+    textstr = model_to_do 
+    # place a text box in upper left in axes coords
+    ax.text(0.05, 0.8, textstr, color='black', transform=ax.transAxes, 
+        bbox=dict(facecolor='none', edgecolor='black', boxstyle='round,pad=1'))
     plt.legend()
-    plt.savefig("plots/roc_curve_atlas_all" + ".pdf", format='pdf', transparent=True)
+    plt.yscale('log', nonposy='clip')
+    plt.savefig(destination + "roc_curve_atlas_all" + ".pdf", format='pdf', transparent=True)
     plt.clf()
     plt.cla()
 
