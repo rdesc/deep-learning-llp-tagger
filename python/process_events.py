@@ -125,15 +125,15 @@ def process_qcd_events(array):
     num_max_muonSegs = 70
 
     size_0 = array_0.shape[0] + array_1.shape[0]
-    size_1 = (num_cluster_variables*num_max_constits) + (num_track_variables*num_max_tracks) + (num_muon_variables*num_max_muonSegs) + 13
+    size_1 = (num_cluster_variables*num_max_constits) + (num_track_variables*num_max_tracks) + (num_muon_variables*num_max_muonSegs) + 14
     x_data = np.full([size_0,size_1],np.nan, dtype='float32')
     
 
     x_data[0:array_0.shape[0],0] = np.zeros(array_0.shape[0])
     x_data[array_0.shape[0]:array_0.shape[0]+array_1.shape[0],0] = np.zeros(array_1.shape[0])
 
-    x_data[0:array_0.shape[0],1] = np.multiply( np.array([array_0['mcEventWeight'].to_numpy()]), 20000000*np.random.rand(array_0.shape[0]) + 100000000)
-    x_data[array_0.shape[0]:array_0.shape[0]+array_1.shape[0],1] = np.multiply( np.array([*array_1['mcEventWeight'].to_numpy()]), 20000000*np.random.rand(array_1.shape[0]) + 100000000)
+    x_data[0:array_0.shape[0],1] = np.array([*array_0['mcEventWeight'].to_numpy()])
+    x_data[array_0.shape[0]:array_0.shape[0]+array_1.shape[0],1] = np.array([*array_1['mcEventWeight'].to_numpy()])
 
     x_data[0:array_0.shape[0],2] = np.ones(array_0.shape[0])
     x_data[array_0.shape[0]:array_0.shape[0]+array_1.shape[0],2] = np.ones(array_1.shape[0])
@@ -344,7 +344,7 @@ def process_bib_events(array):
     num_max_muonSegs = 70
 
     size_0 = array.shape[0] 
-    size_1 = (num_cluster_variables*num_max_constits) + (num_track_variables*num_max_tracks) + (num_muon_variables*num_max_muonSegs) + 13
+    size_1 = (num_cluster_variables*num_max_constits) + (num_track_variables*num_max_tracks) + (num_muon_variables*num_max_muonSegs) + 14
     x_data = np.full([size_0,size_1],np.nan, dtype='float32')
     
 
@@ -561,7 +561,7 @@ def process_signal_events(array, llp_mH, llp_mS):
     num_max_muonSegs = 70
 
     size_0 = array_0.shape[0] + array_1.shape[0]
-    size_1 = (num_cluster_variables*num_max_constits) + (num_track_variables*num_max_tracks) + (num_muon_variables*num_max_muonSegs) + 13
+    size_1 = (num_cluster_variables*num_max_constits) + (num_track_variables*num_max_tracks) + (num_muon_variables*num_max_muonSegs) + 14
     x_data = np.full([size_0,size_1],np.nan, dtype='float32')
     
 
@@ -776,22 +776,9 @@ df = pd.DataFrame()
 
 counter=0
 
-for arrays in uproot.iterate("/data/fcormier/calRatio/fullRun2/grid_output_1/qcd/*/user.fcormier*.root", "trees_msVtx_",
-        var_list_QCD,entrysteps=500000,executor=executor, outputtype=pd.DataFrame):
-    #do_something_with(arrays)
-    print("QCD")
-    print("It has been " + (str(time.time() - start)) + "seconds since start")
-    counter = counter+1
-    print(counter)
-    signal_arrays = arrays[arrays.signal == 1]
-    QCD_arrays = arrays[arrays.QCD == 1]
-    BIB_arrays = arrays[arrays.BIB == 1]
-
-    if len(QCD_arrays) > 0:
-        df_qcd = process_qcd_events(QCD_arrays)
-        df = df.append(df_qcd, ignore_index=False)
-
-
+signal_length = 0
+bib_length = 0
+qcd_length = 0
 
 for path,entries_start,entries_stop,arrays in uproot.iterate("/data/fcormier/calRatio/fullRun2/grid_output_1/signal/*/user.fcormier*.root", "trees_msVtx_",
         var_list_MC,entrysteps=500000,executor=executor, outputtype=pd.DataFrame, reportpath=True, reportentries=True):
@@ -810,22 +797,51 @@ for path,entries_start,entries_stop,arrays in uproot.iterate("/data/fcormier/cal
     QCD_arrays = arrays[arrays.QCD == 1]
     BIB_arrays = arrays[arrays.BIB == 1]
 
+
     #print(len(signal_arrays))
     #print(len(QCD_arrays))
     #print(len(BIB_arrays))
 
     if len(signal_arrays) > 0:
         df_signal = process_signal_events(signal_arrays, llp_mH, llp_mS)
+        signal_length = signal_length + df_signal.shape[0]
         df = df.append(df_signal, ignore_index=False)
 
     if len(BIB_arrays) > 0:
         df_bib = process_bib_events(BIB_arrays)
         df = df.append(df_signal, ignore_index=False)
 
+print("Signal length: " + str(signal_length) )
 
 
-for arrays in uproot.iterate("/data/fcormier/calRatio/fullRun2/grid_output_1/bib/*/user.fcormier*.root", "trees_msVtx_",
-        var_list_data,entrysteps=500000,executor=executor, outputtype=pd.DataFrame):
+for path,entries_start,entries_stop,arrays in uproot.iterate("/data/fcormier/calRatio/fullRun2/grid_output_1/qcd/user.fcormier.mc16_13TeV.361023.Pythia8EvtGen_A14NNPDF23LO_jetjet_JZ3W.r10201_3_trees.root/user.fcormier*.root", "trees_msVtx_",
+        var_list_QCD,entrysteps=500000,executor=executor, outputtype=pd.DataFrame, reportpath=True, reportentries=True):
+    #do_something_with(arrays)
+    print("QCD")
+    print("It has been " + (str(time.time() - start)) + "seconds since start")
+    counter = counter+1
+    print(counter)
+    signal_arrays = arrays[arrays.signal == 1]
+    QCD_arrays = arrays[arrays.QCD == 1]
+    BIB_arrays = arrays[arrays.BIB == 1]
+    print("Entries start: " + str(entries_start) )
+    print("Entries stop: " + str(entries_stop) )
+    print("Path: " + str(path) )
+
+    if len(QCD_arrays) > 0:
+        df_qcd = process_qcd_events(QCD_arrays)
+        qcd_length = qcd_length + df_qcd.shape[0]
+        df = df.append(df_qcd, ignore_index=False)
+        if qcd_length >= signal_length:
+            break
+
+
+print("QCD length: " + str(qcd_length) )
+
+
+
+for path,entries_start,entries_stop,arrays in uproot.iterate("/data/fcormier/calRatio/fullRun2/grid_output_1/bib/*/user.fcormier*.root", "trees_msVtx_",
+        var_list_data,entrysteps=500000,executor=executor, outputtype=pd.DataFrame, reportpath=True, reportentries=True):
     #do_something_with(arrays)
     print("BIB")
     print("It has been " + (str(time.time() - start)) + "seconds since start")
@@ -834,6 +850,9 @@ for arrays in uproot.iterate("/data/fcormier/calRatio/fullRun2/grid_output_1/bib
     signal_arrays = arrays[arrays.signal == 1]
     QCD_arrays = arrays[arrays.QCD == 1]
     BIB_arrays = arrays[arrays.BIB == 1]
+    print("Entries start: " + str(entries_start) )
+    print("Entries stop: " + str(entries_stop) )
+    print("Path: " + str(path) )
 
     #print(len(signal_arrays))
     #print(len(QCD_arrays))
@@ -845,8 +864,12 @@ for arrays in uproot.iterate("/data/fcormier/calRatio/fullRun2/grid_output_1/bib
 
     if len(BIB_arrays) > 0:
         df_bib = process_bib_events(BIB_arrays)
+        bib_length = bib_length + df_bib.shape[0]
         df = df.append(df_bib, ignore_index=False)
+        if bib_length >= signal_length:
+            break
 
+print("BIB length: " + str(bib_length) )
 
 
 #print(df)
@@ -854,11 +877,10 @@ min_pt = 40000
 max_pt = 300000
 print("Saving raw file...")
 df.to_pickle("raw_output")
-'''
-df = pd.read_pickle("raw_output")
-'''
+#df = pd.read_pickle("raw_output")
 print("Plotting...")
 print("It has been " + (str(time.time() - start)) + "seconds since start")
+plot_vars(df, prefix="_cleanJets")
 plot_vars(df)
 print("Flattening...")
 min_pt = 40000

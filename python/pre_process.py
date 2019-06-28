@@ -99,7 +99,6 @@ def pre_process(data, min_pt, max_pt):
     #Subtract the phi of the jet from all MSegs Dir
     data[filter_MSeg_phiDir] = data[filter_MSeg_phiDir].sub(data["jet_phi"], axis='index')
  
-    print(data)
 
 
     return data

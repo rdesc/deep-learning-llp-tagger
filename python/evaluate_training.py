@@ -70,17 +70,36 @@ def find_threshold(prediction,y, weight, perc, label):
 
     return threshold, leftovers
 
-def signal_llp_efficiencies(prediction,y_test,Z_test):
+def signal_llp_efficiencies(prediction,y_test,Z_test,destination):
     sig_rows = np.where(y_test==1)
     prediction = prediction[sig_rows]
     Z_test = Z_test.iloc[sig_rows]
     mass_array = (Z_test.groupby(['llp_mH','llp_mS']).size().reset_index().rename(columns={0:'count'}))
+
+    plot_x = []
+    plot_y = []
+    plot_z = []
+
     for item,mH,mS in zip(mass_array['count'],mass_array['llp_mH'],mass_array['llp_mS']):
         temp_array = prediction[ (Z_test['llp_mH'] == mH) & (Z_test['llp_mS'] == mS) ]
         temp_max = np.argmax(temp_array,axis=1)
         temp_num_signal_best = len(temp_max[temp_max==1])
         temp_eff = temp_num_signal_best / temp_array.shape[0]
+        plot_x.append(mH)
+        plot_y.append(temp_eff)
+        plot_z.append(mS)
         print("mH: " + str(mH) + ", mS: " + str(mS) + ", Eff: " + str(temp_eff))
+
+    plt.clf()
+    plt.figure()
+    plt.scatter(plot_x, plot_y, marker='+', s=150, linewidths=4, c=plot_z, cmap=plt.cm.coolwarm)
+    cbar = plt.colorbar()
+    cbar.ax.set_ylabel(r'mS')
+    plt.xlabel("mH")
+    plt.ylabel("Signal Efficiency")
+
+    plt.savefig(destination+"signal_llp_efficiencies"+ ".pdf", format='pdf', transparent=True)
+    plt.clf()
 
 
 def make_multi_roc_curve(prediction,y,weight,threshold,label,leftovers):
@@ -339,7 +358,7 @@ def evaluate_model(X_test, y_test, weights_test, Z_test,  model_to_do, deleteTim
     #threshold_array = [0.99,(1-0.03),(1-0.09),(1-0.23),(1-0.59),0.001]
     #threshold_array =  np.logspace(-4,0,30)[::-3]
     #for percent in range(0,100,10):
-    signal_llp_efficiencies(prediction,y_test,Z_test)
+    signal_llp_efficiencies(prediction,y_test,Z_test, destination)
     for item in threshold_array:
         test_perc = item*100
         test_label = 2
