@@ -42,12 +42,66 @@ def pre_process(data, min_pt, max_pt):
     data[filter_clus_pt] = data[filter_clus_pt].sub(min_pt, axis='index')
     data[filter_clus_pt] = data[filter_clus_pt].divide( (max_pt - min_pt), axis='index')
 
-    #SCALE Cluster Energy Fraction
-    #TODO: this is jet-level (ie all constituents), would make more sense for this to be constituent level
-    filter_clus_eFrac = [col for col in data if col.startswith("e_")]
-    data['sum_eFrac'] = data[filter_clus_eFrac].sum(axis=1)
-    data[filter_clus_eFrac] = data[filter_clus_eFrac].divide(data['sum_eFrac'], axis='index')
- 
+    #SCALE Cluster Energy Fraction, then unites layers across different eta ranges
+    for i in range(0,30):
+        layer_one_ecal_list = ["e_PreSamplerB","e_PreSamplerE"]
+        layer_two_ecal_list = ["e_EMB1_0","e_EME1_0","e_FCAL0"]
+        layer_three_ecal_list = ["e_EMB2_0","e_EME2_0","e_FCAL1"]
+        layer_four_ecal_list = ["e_EMB3_0","e_EME3_0","e_FCAL2"]
+        layer_one_ecal_list = tuple(layer_one_ecal_list)
+        layer_two_ecal_list = tuple(layer_two_ecal_list)
+        layer_three_ecal_list = tuple(layer_three_ecal_list)
+        layer_four_ecal_list = tuple(layer_four_ecal_list)
+	
+        layer_one_hcal_list = ["e_HEC0_0"]  
+        layer_two_hcal_list = ["e_HEC0_1","e_TileBar0_0","e_TileGap1_0","e_TileExt0_0"]
+        layer_three_hcal_list = ["e_HEC0_2","e_TileBar0_1","e_TileGap1_1","e_TileExt0_1"]
+        layer_four_hcal_list = ["e_HEC0_3","e_TileBar0_2","e_TileGap1_2","e_TileExt0_2"]
+        layer_one_hcal_list = tuple(layer_one_hcal_list)
+        layer_two_hcal_list = tuple(layer_two_hcal_list)
+        layer_three_hcal_list = tuple(layer_three_hcal_list)
+        layer_four_hcal_list = tuple(layer_four_hcal_list)
+	
+        filter_one_ecal_list = [col for col in data if col.startswith(layer_one_ecal_list) and col.endswith('_'+str(i))]
+        print(filter_one_ecal_list)
+        filter_two_ecal_list = [col for col in data if col.startswith(layer_two_ecal_list) and col.endswith('_'+str(i))]
+        filter_three_ecal_list = [col for col in data if col.startswith(layer_three_ecal_list) and col.endswith('_'+str(i))]
+        filter_four_ecal_list = [col for col in data if col.startswith(layer_four_ecal_list) and col.endswith('_'+str(i))]
+	
+        filter_one_hcal_list = [col for col in data if col.startswith(layer_one_hcal_list) and col.endswith('_'+str(i))]
+        filter_two_hcal_list = [col for col in data if col.startswith(layer_two_hcal_list) and col.endswith('_'+str(i))]
+        filter_three_hcal_list = [col for col in data if col.startswith(layer_three_hcal_list) and col.endswith('_'+str(i))]
+        filter_four_hcal_list = [col for col in data if col.startswith(layer_four_hcal_list) and col.endswith('_'+str(i))]
+	
+        data['l1_ecal_'+str(i)] = data[filter_one_ecal_list].sum(axis=1)
+        data['l2_ecal_'+str(i)] = data[filter_two_ecal_list].sum(axis=1)
+        data['l3_ecal_'+str(i)] = data[filter_three_ecal_list].sum(axis=1)
+        data['l4_ecal_'+str(i)] = data[filter_four_ecal_list].sum(axis=1)
+        
+        data['l1_hcal_'+str(i)] = data[filter_one_hcal_list].sum(axis=1)
+        data['l2_hcal_'+str(i)] = data[filter_two_hcal_list].sum(axis=1)
+        data['l3_hcal_'+str(i)] = data[filter_three_hcal_list].sum(axis=1)
+        data['l4_hcal_'+str(i)] = data[filter_four_hcal_list].sum(axis=1)
+        
+        filter_clus_eFrac = [col for col in data if col.startswith("e_") and col.endswith('_'+str(i))]
+        data['sum_eFrac'] = data[filter_clus_eFrac].sum(axis=1)
+        
+        data['l1_ecal_'+str(i)] = data['l1_ecal_'+str(i)].divide(data['sum_eFrac'], axis='index')
+        data['l2_ecal_'+str(i)] = data['l2_ecal_'+str(i)].divide(data['sum_eFrac'], axis='index')
+        data['l3_ecal_'+str(i)] = data['l3_ecal_'+str(i)].divide(data['sum_eFrac'], axis='index')
+        data['l4_ecal_'+str(i)] = data['l4_ecal_'+str(i)].divide(data['sum_eFrac'], axis='index')
+        
+        data['l1_hcal_'+str(i)] = data['l1_hcal_'+str(i)].divide(data['sum_eFrac'], axis='index')
+        data['l2_hcal_'+str(i)] = data['l2_hcal_'+str(i)].divide(data['sum_eFrac'], axis='index')
+        data['l3_hcal_'+str(i)] = data['l3_hcal_'+str(i)].divide(data['sum_eFrac'], axis='index')
+        data['l4_hcal_'+str(i)] = data['l4_hcal_'+str(i)].divide(data['sum_eFrac'], axis='index')
+	
+	#data[filter_clus_eFrac] = data[filter_clus_eFrac].divide(data['sum_eFrac'], axis='index')
+	
+    layerDelete = [col for col in data if col.startswith("e_")]
+    for item in layerDelete:
+        del data[item]
+    
     del data['sum_eFrac']
 
     #Now For Tracks
@@ -99,7 +153,8 @@ def pre_process(data, min_pt, max_pt):
     #Subtract the phi of the jet from all MSegs Dir
     data[filter_MSeg_phiDir] = data[filter_MSeg_phiDir].sub(data["jet_phi"], axis='index')
  
-
+    #Shuffle all jets
+    data = data.sample(frac=1).reset_index(drop=True)
 
     return data
 

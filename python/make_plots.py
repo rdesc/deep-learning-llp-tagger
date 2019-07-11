@@ -46,6 +46,7 @@ def plot_three_histos(signal,qcd,bib,name,xmin,xmax,bins, prefix):
 
     plt.savefig("plots/" + name+ prefix +".png", format='png', transparent=False)
     plt.clf()
+    plt.close()
 
 def plot_three_histos_withCut(signal,qcd,bib,name,xmin,xmax,bins, prefix, cut_variable, cut_direction, cut_value):
     fig,ax = plt.subplots()
@@ -65,6 +66,7 @@ def plot_three_histos_withCut(signal,qcd,bib,name,xmin,xmax,bins, prefix, cut_va
 
     plt.savefig("plots/cutDiagrams/" + name+ prefix + "_" + str(cut_variable) + cut_direction + str(cut_value) +".png", format='png', transparent=False)
     plt.clf()
+    plt.close()
 
 def plot_constit(x_constit,y_constit,z_constit,name, prefix):
 
@@ -95,6 +97,7 @@ def plot_constit(x_constit,y_constit,z_constit,name, prefix):
 
     plt.savefig("plots/" + name + prefix +".png", format='png', transparent=False)
     plt.clf()
+    plt.close()
 
 def plot_2d_histos(signal_x, qcd_x, bib_x, name_x, xmin, xmax, x_bins,  signal_y, qcd_y, bib_y, name_y, ymin, ymax, y_bins, prefix): 
     cmap_sig = sns.cubehelix_palette(rot=-.4,dark=0, light=1,as_cmap=True)
@@ -109,6 +112,7 @@ def plot_2d_histos(signal_x, qcd_x, bib_x, name_x, xmin, xmax, x_bins,  signal_y
 
     plt.savefig("plots/2Dplots/signal_" + name_x + "_2D_" +  name_y + prefix +".png", format='png', transparent=False)
     plt.clf()
+    plt.close()
 
     plt.figure()
     plt.hist2d(qcd_x, qcd_y, bins=[x_bins, y_bins], range=[[xmin,xmax],[ymin,ymax]], norm = LogNorm(), cmap = cmap_sig)  
@@ -119,6 +123,7 @@ def plot_2d_histos(signal_x, qcd_x, bib_x, name_x, xmin, xmax, x_bins,  signal_y
 
     plt.savefig("plots/2Dplots/qcd_" + name_x + "_2D_" +  name_y + prefix +".png", format='png', transparent=False)
     plt.clf()
+    plt.close()
 
     plt.figure()
     plt.hist2d(bib_x, bib_y, bins=[x_bins, y_bins], range=[[xmin,xmax],[ymin,ymax]], norm = LogNorm(), cmap = cmap_sig)  
@@ -129,6 +134,7 @@ def plot_2d_histos(signal_x, qcd_x, bib_x, name_x, xmin, xmax, x_bins,  signal_y
 
     plt.savefig("plots/2Dplots/bib_" + name_x + "_2D_" +  name_y + prefix +".png", format='png', transparent=False)
     plt.clf()
+    plt.close()
 
 def do_plotting_2D(signal,qcd,bib,name_x,xmin,xmax,x_bins, name_y, ymin,ymax,y_bins, prefix):
 
@@ -229,6 +235,7 @@ def do_truth_plotting(signal,truth_dist,truth_xmin,truth_xmax,truth_bins,prefix)
         plt.legend()
         plt.savefig("plots/" + name+ prefix +".png", format='png', transparent=False)
         plt.clf()
+    plt.close()
 
 
 def plot_vars(data, prefix=""):
@@ -261,6 +268,7 @@ def plot_vars(data, prefix=""):
 
     #jet_eta studies
     signal['aux_llp_jet_eta_difference'] = signal['aux_llp_eta'] - signal['jet_eta']
+    signal['aux_llp_jet_pt_difference'] = signal['aux_llp_pt'] - signal['jet_eta'].divide(1000)
 
     signal_all_clus_pt = remove_values_from_list(signal_clus_pt.values.flatten(),np.nan)
     qcd_all_clus_pt = remove_values_from_list(qcd_clus_pt.values.flatten(),np.nan)
@@ -285,25 +293,25 @@ def plot_vars(data, prefix=""):
     bin_dict = {"jet_pt":40, "jet_eta":20, "jet_phi":20, "jet_isClean_LooseBadLLP":2, "jet_E":40, "clus_pt":40,"clus_eta":20,"clus_phi":20,"e_PreSamplerB":20,"e_EMB1":20,"e_EMB2":20,"e_EMB3":20,"e_PreSamplerE":20,"e_EME1":20,"e_EME2":20,"e_EME3":20,"e_HEC0":20,"e_HEC1":20,"e_HEC2":20,"e_HEC3":20,"e_TileBar0":20,"e_TileBar1":20,"e_TileBar2":20,"e_TileGap1":20,"e_TileGap2":20,"e_TileGap3":20,"e_TileExt0":20,"e_TileExt1":20,"e_TileExt2":20,"e_FCAL0":20,"e_FCAL1":20,"e_FCAL2":20,"clusTime":20,"nn_track_pt":40,"nn_track_eta":20,"nn_track_phi":20,"nn_track_d0":30,"nn_track_z0":30,"nn_track_PixelShared":11,"nn_track_PixelSplit":11,"nn_track_SCTShared":11,"nn_track_PixelHoles":11,"nn_track_SCTHoles":11,"nn_track_PixelHits":11,"nn_track_SCTHits":11,"nn_MSeg_etaPos":20,"nn_MSeg_phiPos":20,"nn_MSeg_etaDir":20,"nn_MSeg_phiDir":20,"nn_MSeg_t0":20}
 
     if "processing" in prefix:
-        xmin_dict = {"jet_pt":0, "jet_eta":-1, "jet_phi":-1, "jet_isClean_LooseBadLLP":0, "jet_E":0, "clus_pt":0,"clus_eta":-1,"clus_phi":-1,"e_PreSamplerB":0.05,"e_EMB1":0.05,"e_EMB2":0.05,"e_EMB3":0.05,"e_PreSamplerE":0.05,"e_EME1":0.05,"e_EME2":0.05,"e_EME3":0.05,"e_HEC0":0.05,"e_HEC1":0.05,"e_HEC2":0.05,"e_HEC3":0.05,"e_TileBar0":0.05,"e_TileBar1":0.05,"e_TileBar2":0.05,"e_TileGap1":0.05,"e_TileGap2":0.05,"e_TileGap3":0.05,"e_TileExt0":0.05,"e_TileExt1":0.05,"e_TileExt2":0.05,"e_FCAL0":0.05,"e_FCAL1":0.05,"e_FCAL2":0.05,"clusTime":-10,"nn_track_pt":0,"nn_track_eta":-1,"nn_track_phi":-1,"nn_track_d0":0,"nn_track_z0":0,"nn_track_PixelShared":-1,"nn_track_PixelSplit":-1,"nn_track_SCTShared":-1,"nn_track_PixelHoles":-1,"nn_track_SCTHoles":-1,"nn_track_PixelHits":-1,"nn_track_SCTHits":-1,"nn_MSeg_etaPos":-1,"nn_MSeg_phiPos":-1,"nn_MSeg_etaDir":-8,"nn_MSeg_phiDir":-1,"nn_MSeg_t0":-10}
+        xmin_dict = {"jet_pt":0, "jet_eta":-1, "jet_phi":-1, "jet_isClean_LooseBadLLP":0, "jet_E":0, "clus_pt":0,"clus_eta":-1,"clus_phi":-1,"e_PreSamplerB":0.05,"e_EMB1":0.05,"e_EMB2":0.05,"e_EMB3":0.05,"e_PreSamplerE":0.05,"e_EME1":0.05,"e_EME2":0.05,"e_EME3":0.05,"e_HEC0":0.05,"e_HEC1":0.05,"e_HEC2":0.05,"e_HEC3":0.05,"e_TileBar0":0.05,"e_TileBar1":0.05,"e_TileBar2":0.05,"e_TileGap1":0.05,"e_TileGap2":0.05,"e_TileGap3":0.05,"e_TileExt0":0.05,"e_TileExt1":0.05,"e_TileExt2":0.05,"e_FCAL0":0.05,"e_FCAL1":0.05,"e_FCAL2":0.05,"clusTime":-10,"nn_track_pt":0,"nn_track_eta":-1,"nn_track_phi":-1,"nn_track_d0":0,"nn_track_z0":0,"nn_track_PixelShared":-1,"nn_track_PixelSplit":-1,"nn_track_SCTShared":-1,"nn_track_PixelHoles":-1,"nn_track_SCTHoles":-1,"nn_track_PixelHits":-1,"nn_track_SCTHits":-1,"nn_MSeg_etaPos":-1,"nn_MSeg_phiPos":-1,"nn_MSeg_etaDir":-8,"nn_MSeg_phiDir":-1,"nn_MSeg_t0":-10,"l1_ecal":0,"l2_ecal":0,"l3_ecal":0,"l4_ecal":0,"l1_hcal":0,"l2_hcal":0,"l3_hcal":0,"l4_hcal":0}
 
-        xmax_dict = {"jet_pt":1, "jet_eta":1, "jet_phi":1, "jet_isClean_LooseBadLLP":2, "jet_E":1, "clus_pt":1,"clus_eta":1,"clus_phi":1,"e_PreSamplerB":1,"e_EMB1":1,"e_EMB2":1,"e_EMB3":1,"e_PreSamplerE":1,"e_EME1":1,"e_EME2":1,"e_EME3":1,"e_HEC0":1,"e_HEC1":1,"e_HEC2":1,"e_HEC3":1,"e_TileBar0":1,"e_TileBar1":1,"e_TileBar2":1,"e_TileGap1":1,"e_TileGap2":1,"e_TileGap3":1,"e_TileExt0":1,"e_TileExt1":1,"e_TileExt2":1,"e_FCAL0":1,"e_FCAL1":1,"e_FCAL2":1,"clusTime":11,"nn_track_pt":1,"nn_track_eta":1,"nn_track_phi":1,"nn_track_d0":4,"nn_track_z0":300,"nn_track_PixelShared":10,"nn_track_PixelSplit":10,"nn_track_SCTShared":10,"nn_track_PixelHoles":10,"nn_track_SCTHoles":10,"nn_track_PixelHits":10,"nn_track_SCTHits":10,"nn_MSeg_etaPos":1,"nn_MSeg_phiPos":1,"nn_MSeg_etaDir":8,"nn_MSeg_phiDir":1,"nn_MSeg_t0":10}
+        xmax_dict = {"jet_pt":1, "jet_eta":1, "jet_phi":1, "jet_isClean_LooseBadLLP":2, "jet_E":1, "clus_pt":1,"clus_eta":1,"clus_phi":1,"e_PreSamplerB":1,"e_EMB1":1,"e_EMB2":1,"e_EMB3":1,"e_PreSamplerE":1,"e_EME1":1,"e_EME2":1,"e_EME3":1,"e_HEC0":1,"e_HEC1":1,"e_HEC2":1,"e_HEC3":1,"e_TileBar0":1,"e_TileBar1":1,"e_TileBar2":1,"e_TileGap1":1,"e_TileGap2":1,"e_TileGap3":1,"e_TileExt0":1,"e_TileExt1":1,"e_TileExt2":1,"e_FCAL0":1,"e_FCAL1":1,"e_FCAL2":1,"clusTime":11,"nn_track_pt":1,"nn_track_eta":1,"nn_track_phi":1,"nn_track_d0":4,"nn_track_z0":300,"nn_track_PixelShared":10,"nn_track_PixelSplit":10,"nn_track_SCTShared":10,"nn_track_PixelHoles":10,"nn_track_SCTHoles":10,"nn_track_PixelHits":10,"nn_track_SCTHits":10,"nn_MSeg_etaPos":1,"nn_MSeg_phiPos":1,"nn_MSeg_etaDir":8,"nn_MSeg_phiDir":1,"nn_MSeg_t0":10,"l1_ecal":1,"l2_ecal":1,"l3_ecal":1,"l4_ecal":1,"l1_hcal":1,"l2_hcal":1,"l3_hcal":1,"l4_hcal":1}
 
-        bin_dict = {"jet_pt":40, "jet_eta":20, "jet_phi":20, "jet_isClean_LooseBadLLP":2, "jet_E":40, "clus_pt":40,"clus_eta":20,"clus_phi":20,"e_PreSamplerB":20,"e_EMB1":20,"e_EMB2":20,"e_EMB3":20,"e_PreSamplerE":20,"e_EME1":20,"e_EME2":20,"e_EME3":20,"e_HEC0":20,"e_HEC1":20,"e_HEC2":20,"e_HEC3":20,"e_TileBar0":20,"e_TileBar1":20,"e_TileBar2":20,"e_TileGap1":20,"e_TileGap2":20,"e_TileGap3":20,"e_TileExt0":20,"e_TileExt1":20,"e_TileExt2":20,"e_FCAL0":20,"e_FCAL1":20,"e_FCAL2":20,"clusTime":20,"nn_track_pt":40,"nn_track_eta":20,"nn_track_phi":20,"nn_track_d0":30,"nn_track_z0":30,"nn_track_PixelShared":11,"nn_track_PixelSplit":11,"nn_track_SCTShared":11,"nn_track_PixelHoles":11,"nn_track_SCTHoles":11,"nn_track_PixelHits":11,"nn_track_SCTHits":11,"nn_MSeg_etaPos":20,"nn_MSeg_phiPos":20,"nn_MSeg_etaDir":20,"nn_MSeg_phiDir":20,"nn_MSeg_t0":20}
+        bin_dict = {"jet_pt":40, "jet_eta":20, "jet_phi":20, "jet_isClean_LooseBadLLP":2, "jet_E":40, "clus_pt":40,"clus_eta":20,"clus_phi":20,"e_PreSamplerB":20,"e_EMB1":20,"e_EMB2":20,"e_EMB3":20,"e_PreSamplerE":20,"e_EME1":20,"e_EME2":20,"e_EME3":20,"e_HEC0":20,"e_HEC1":20,"e_HEC2":20,"e_HEC3":20,"e_TileBar0":20,"e_TileBar1":20,"e_TileBar2":20,"e_TileGap1":20,"e_TileGap2":20,"e_TileGap3":20,"e_TileExt0":20,"e_TileExt1":20,"e_TileExt2":20,"e_FCAL0":20,"e_FCAL1":20,"e_FCAL2":20,"clusTime":20,"nn_track_pt":40,"nn_track_eta":20,"nn_track_phi":20,"nn_track_d0":30,"nn_track_z0":30,"nn_track_PixelShared":11,"nn_track_PixelSplit":11,"nn_track_SCTShared":11,"nn_track_PixelHoles":11,"nn_track_SCTHoles":11,"nn_track_PixelHits":11,"nn_track_SCTHits":11,"nn_MSeg_etaPos":20,"nn_MSeg_phiPos":20,"nn_MSeg_etaDir":20,"nn_MSeg_phiDir":20,"nn_MSeg_t0":20,"l1_ecal":20,"l2_ecal":20,"l3_ecal":20,"l4_ecal":20,"l1_hcal":20,"l2_hcal":20,"l3_hcal":20,"l4_hcal":20}
 
     truth_dist = ["aux_llp_Lxy","aux_llp_Lz","aux_llp_pt","aux_llp_eta","aux_llp_phi"]
-    truth_xmin = [1000, 1000, 40000, -2.5, -3.14]
-    truth_xmax = [4000, 5000, 200000, 2.5, 3.14]
+    truth_xmin = [1000, 1000, 40, -2.5, -3.14]
+    truth_xmax = [4000, 5000, 300, 2.5, 3.14]
     truth_bins = [20,20,20,20,20]
 
     do_plotting_2D(signal,qcd,bib,"nn_MSeg_etaDir",-8,8,40,"nn_MSeg_etaPos", -1.5,2.5,40, prefix)
     do_plotting_2D(signal,signal,signal,"aux_llp_eta",-1.5,1.5,40,"aux_llp_Lxy", 1000,4000,60, prefix)
     do_plotting_2D(signal,signal,signal,"aux_llp_jet_eta_difference",-0.4,0.4,40,"aux_llp_eta", -1.5,1.5,60, prefix)
+    do_plotting_2D(signal,signal,signal,"aux_llp_jet_pt_difference",-0.4,0.4,40,"aux_llp_pt", -1.5,1.5,60, prefix)
     do_plotting_withCut(signal,qcd,bib,"nn_MSeg_etaDir",-8,8,20,prefix,"jet_eta",1.0)
     do_truth_plotting(signal,truth_dist,truth_xmin,truth_xmax,truth_bins,prefix)
     #do_plotting_withCut(signal,qcd,bib,"nn_MSeg_etaDir",-8,8,20,prefix,"nn_MSeg_etaPos",1.0)
     for key in xmin_dict:
-       pass
        do_plotting(signal,qcd,bib,key,xmin_dict[key],xmax_dict[key],bin_dict[key], prefix)
  
  

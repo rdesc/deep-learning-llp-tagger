@@ -1,6 +1,5 @@
 import numpy as np
 import seaborn as sns
-from column_definition import *
 
 import pandas as pd
 
@@ -877,10 +876,10 @@ min_pt = 40000
 max_pt = 300000
 print("Saving raw file...")
 df.to_pickle("raw_output")
-#df = pd.read_pickle("raw_output")
+df = pd.read_pickle("raw_output")
 print("Plotting...")
 print("It has been " + (str(time.time() - start)) + "seconds since start")
-plot_vars(df, prefix="_cleanJets")
+#plot_vars(df, prefix="_cleanJets")
 plot_vars(df)
 print("Flattening...")
 min_pt = 40000
@@ -890,12 +889,11 @@ df = flatten(df, min_pt, max_pt, 20)
 print("pre-processing...")
 print("It has been " + (str(time.time() - start)) + "seconds since start")
 df = pre_process(df, 0, max_pt)
-plot_vars(df, prefix="_post_processing")
+#plot_vars(df, prefix="_post_processing")
 df = parametrize_masses(df)
 print("Saving processed file...")
 print("It has been " + (str(time.time() - start)) + "seconds since start")
 df.to_pickle("processed_output")
-
 #train(df.fillna(0))
     #print(arrays.jet_eta)
     #print(arrays[arrays['HLT_jet_TAU60'].apply(lambda x: sum(x)) > 0])

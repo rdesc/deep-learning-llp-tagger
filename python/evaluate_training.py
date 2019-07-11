@@ -244,7 +244,7 @@ def plot_prediction_histograms(destination,
     plt.clf()
     return
 
-def evaluate_model(X_test, y_test, weights_test, Z_test,  model_to_do, deleteTime):
+def evaluate_model(X_test, y_test, weights_test, mcWeights_test,  Z_test,  model_to_do, deleteTime):
 
     if (model_to_do == "dense"):
 
@@ -264,27 +264,28 @@ def evaluate_model(X_test, y_test, weights_test, Z_test,  model_to_do, deleteTim
         model.add(Activation('softmax'))
         model.compile(optimizer='Adam', loss='categorical_crossentropy', metrics=['accuracy'])
         model.summary()
-        model.load_weights("keras_outputs/checkpoint_"+model_to_do)
+        model.load_weights("keras_outputs/"+model_to_do)
 
     if ("lstm" in model_to_do):
 
         if deleteTime:
-            num_constit_vars = 27
+            num_constit_vars = 11
         else:
-            num_constit_vars = 28
+            num_constit_vars = 12
         num_track_vars = 12
         if deleteTime:
             num_MSeg_vars = 4
         else:
             num_MSeg_vars = 5
 
+        num_jet_vars = 3
+
         num_max_constits = 30
         num_max_tracks = 20
         num_max_MSegs = 70
 
-
         if deleteTime:
-            X_test_constit = X_test.loc[:,'clus_pt_0':'e_FCAL2_29']
+            X_test_constit = X_test.loc[:,'clus_pt_0':'clus_phi_29']
         else:
             X_test_constit = X_test.loc[:,'clus_pt_0':'clusTime_29']
         X_test_track = X_test.loc[:,'nn_track_pt_0':'nn_track_SCTHits_19']
@@ -293,8 +294,19 @@ def evaluate_model(X_test, y_test, weights_test, Z_test,  model_to_do, deleteTim
         else:
             X_test_MSeg = X_test.loc[:,'nn_MSeg_etaPos_0':'nn_MSeg_t0_69']
         X_test_jet = X_test.loc[:,'jet_pt':'jet_phi']
-        #X_test_jet.join(X_test.loc[:,'llp_mH'])
-        #X_test_jet.join(X_test.loc[:,'llp_mS'])
+
+        for i in range(0,num_max_constits):
+            temp_loc = X_test_constit.columns.get_loc('clus_phi_'+str(i))
+
+            X_test_constit.insert(temp_loc,'l4_hcal_'+str(i),X_test['l4_hcal_'+str(i)])
+            X_test_constit.insert(temp_loc,'l3_hcal_'+str(i),X_test['l3_hcal_'+str(i)])
+            X_test_constit.insert(temp_loc,'l2_hcal_'+str(i),X_test['l2_hcal_'+str(i)])
+            X_test_constit.insert(temp_loc,'l1_hcal_'+str(i),X_test['l1_hcal_'+str(i)])
+            X_test_constit.insert(temp_loc,'l4_ecal_'+str(i),X_test['l4_ecal_'+str(i)])
+            X_test_constit.insert(temp_loc,'l3_ecal_'+str(i),X_test['l3_ecal_'+str(i)])
+            X_test_constit.insert(temp_loc,'l2_ecal_'+str(i),X_test['l2_ecal_'+str(i)])
+            X_test_constit.insert(temp_loc,'l1_ecal_'+str(i),X_test['l1_ecal_'+str(i)])
+
 
         X_test_constit = X_test_constit.values.reshape(X_test_constit.shape[0],num_max_constits,num_constit_vars)
         X_test_track = X_test_track.values.reshape(X_test_track.shape[0],num_max_tracks,num_track_vars)
@@ -315,6 +327,8 @@ def evaluate_model(X_test, y_test, weights_test, Z_test,  model_to_do, deleteTim
         MSeg_output = Dense(3, activation='softmax', name='MSeg_output')(MSeg_out)
 
         jet_input = Input(shape = X_test_jet.values[0].shape, name='jet_input')
+        jet_out = Dense(3)(jet_input)
+        jet_output = Dense(3, activation='softmax', name='jet_output')(jet_out)
 
         x = keras.layers.concatenate([constit_out, track_out, MSeg_out, jet_input])
 
@@ -325,12 +339,12 @@ def evaluate_model(X_test, y_test, weights_test, Z_test,  model_to_do, deleteTim
 
         main_output = Dense(3, activation='softmax', name='main_output')(x)
 
-        model = Model(inputs=[constit_input, track_input, MSeg_input, jet_input], outputs=[main_output, constit_output, track_output, MSeg_output])
+        model = Model(inputs=[constit_input, track_input, MSeg_input, jet_input], outputs=[main_output, constit_output, track_output, MSeg_output, jet_output])
 
 
         model.compile(optimizer='Adadelta', loss='categorical_crossentropy',
-            loss_weights=[1., 0.1, 0.4, 0.3], metrics=['accuracy'])
-        model.load_weights("keras_outputs/checkpoint_"+model_to_do)
+            loss_weights=[1., 0.1, 0.4, 0.2,0.1], metrics=['accuracy'])
+        model.load_weights("keras_outputs/"+model_to_do+'/checkpoint')
 
     if (model_to_do == "dense"):
 	    prediction = model.predict(X_test.values, verbose=True)
@@ -342,17 +356,20 @@ def evaluate_model(X_test, y_test, weights_test, Z_test,  model_to_do, deleteTim
     #print(y_test==2)
     #print(weights_test)
 
-    bib_weight = np.sum(weights_test[y_test==2])
-    sig_weight = np.sum(weights_test[y_test==1])
-    qcd_weight = np.sum(weights_test[y_test==0])
+    bib_weight = np.sum(mcWeights_test[y_test==2])
+    sig_weight = np.sum(mcWeights_test[y_test==1])
+    qcd_weight = np.sum(mcWeights_test[y_test==0])
 
-    weights_test[y_test==0] *= sig_weight/qcd_weight
-    weights_test[y_test==2] *= sig_weight/bib_weight
-    destination = "plots/trainingDiagrams/"+model_to_do + "_"
+    bib_weight_length = len(mcWeights_test[y_test==2])
+    sig_weight_length = len(mcWeights_test[y_test==1])
+    qcd_weight_length = len(mcWeights_test[y_test==0])
+
+    mcWeights_test[y_test==0] *= qcd_weight_length/qcd_weight
+    mcWeights_test[y_test==2] *= bib_weight_length/bib_weight
+    mcWeights_test[y_test==1] *= sig_weight_length/sig_weight
+    destination = "plots/"+model_to_do + "/"
     plot_prediction_histograms(destination,prediction,y_test, weights_test, model_to_do)
     #threshold_array = np.logspace(-0.1,-0.001,30)[::-3]
-    plt.figure()
-    fig,ax = plt.subplots()
     threshold_array = [0.9999,(1-0.001),(1-0.003),(1-0.009),(1-0.023),(1-0.059),(1-0.151),(1-0.389),0.001]
     counter=0
     #threshold_array = [0.99,(1-0.03),(1-0.09),(1-0.23),(1-0.59),0.001]
@@ -364,23 +381,23 @@ def evaluate_model(X_test, y_test, weights_test, Z_test,  model_to_do, deleteTim
         test_label = 2
         #print(prediction.shape)
         #print(y_predictions.shape)
-        test_threshold, leftovers = find_threshold(prediction,y_test, weights_test, test_perc, test_label)
-        bkg_eff, tag_eff, roc_auc, sig_ratio, qcd_ratio = make_multi_roc_curve(prediction,y_test,weights_test,test_threshold,test_label,leftovers)
+        test_threshold, leftovers = find_threshold(prediction,y_test, mcWeights_test, test_perc, test_label)
+        bkg_eff, tag_eff, roc_auc, sig_ratio, qcd_ratio = make_multi_roc_curve(prediction,y_test,mcWeights_test,test_threshold,test_label,leftovers)
         print("AUC: " + str(roc_auc) )
-        ax.plot(tag_eff*sig_ratio, (1.0-bkg_eff)*qcd_ratio, label= f"BIB Eff: {(-item+1):.3f}" +f", AUC: {roc_auc:.3f}")
-        ax.set_xlabel("LLP Tagging Efficiency")
-        ax.set_ylabel("QCD Efficiency")
+        plt.plot(tag_eff*sig_ratio, (1.0-bkg_eff)*qcd_ratio, label= f"BIB Eff: {(-item+1):.3f}" +f", AUC: {roc_auc:.3f}")
+        plt.xlabel("LLP Tagging Efficiency")
+        plt.ylabel("QCD Efficiency")
         axes = plt.gca()
         axes.set_xlim([0,1])
         counter=counter+1
         
         #axes.set_ylim([0,1])
     #matplotlib.patch.Patch properties
-    props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
-    textstr = model_to_do 
+    #props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
+    #textstr = model_to_do 
     # place a text box in upper left in axes coords
-    ax.text(0.05, 0.8, textstr, color='black', transform=ax.transAxes, 
-        bbox=dict(facecolor='none', edgecolor='black', boxstyle='round,pad=1'))
+    #ax.text(0.05, 0.8, textstr, color='black', transform=ax.transAxes, 
+    #    bbox=dict(facecolor='none', edgecolor='black', boxstyle='round,pad=1'))
     plt.legend()
     plt.yscale('log', nonposy='clip')
     plt.savefig(destination + "roc_curve_atlas_all" + ".pdf", format='pdf', transparent=True)

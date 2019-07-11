@@ -21,12 +21,13 @@ def remove_values_from_list(the_list, val):
 
 def plot_three_histos(signal,s_weights,qcd,qcd_weights,bib,bib_weights,name,xmin,xmax,bins):
     plt.hist(signal, weights = s_weights, range=(xmin,xmax),   color='red',alpha=0.5,linewidth=0, histtype='stepfilled',bins=bins,label="Signal")
-    #plt.hist(qcd, range=(xmin,xmax), density=True, color='blue',alpha=0.5, linewidth=0,histtype='stepfilled',bins=bins,label="QCD")
+    plt.hist(qcd, weights = qcd_weights, range=(xmin,xmax),  color='blue',alpha=0.5, linewidth=0,histtype='stepfilled',bins=bins,label="QCD")
     plt.hist(bib, weights = bib_weights, range=(xmin,xmax),  color='green',alpha=0.5, linewidth=0,histtype='stepfilled',bins=bins,label="BIB")
     plt.xlabel(name)
     plt.legend()
     plt.savefig("plots/" + name+ "_flat.png", format='png', transparent=False)
     plt.clf()
+    plt.close()
 
 
 def do_plotting(signal,qcd,bib,name,xmin,xmax,bins):
@@ -57,6 +58,12 @@ def flatten(data, low_bin, high_bin, n_bins):
     qcd = qcd.loc[ (qcd.jet_pt > low_bin) & (qcd.jet_pt < high_bin)].copy()
     bib = bib.loc[ (bib.jet_pt > low_bin) & (bib.jet_pt < high_bin)].copy()
 
+    print(signal.shape[0])
+    print(qcd.shape[0])
+    print(bib.shape[0])
+
+    print(qcd["mcEventWeight"].sum())
+
     signal_array, signal_bin_edges = np.histogram(signal["jet_pt"], bins = n_bins, range = [low_bin,high_bin], density = True)
     print(signal_array)
     print(signal_bin_edges)
@@ -77,13 +84,15 @@ def flatten(data, low_bin, high_bin, n_bins):
     qcd_flatWeights = qcd_array*((high_bin-low_bin))
     bib_flatWeights = bib_array*((high_bin-low_bin))
 
-    qcd_correction = signal.loc[ (signal.jet_pt > low_bin) & (signal.jet_pt < high_bin)].shape[0] / qcd.loc[ (qcd.jet_pt > low_bin) & (qcd.jet_pt < high_bin)].shape[0]
+    #qcd_correction = signal.loc[ (signal.jet_pt > low_bin) & (signal.jet_pt < high_bin)].shape[0] / ( qcd.loc[ (qcd.jet_pt > low_bin) & (qcd.jet_pt < high_bin)].shape[0])
+    qcd_correction = signal.loc[ (signal.jet_pt > low_bin) & (signal.jet_pt < high_bin)].shape[0] / ( qcd["mcEventWeight"].loc[ (qcd.jet_pt > low_bin) & (qcd.jet_pt < high_bin)].sum())
     bib_correction = signal.loc[ (signal.jet_pt > low_bin) & (signal.jet_pt < high_bin)].shape[0] / bib.loc[ (bib.jet_pt > low_bin) & (bib.jet_pt < high_bin)].shape[0]
 
 
     for i in range(len(signal_bin_edges)-1):
         signal["flatWeight"].loc[ (signal.jet_pt > signal_bin_edges[i]) & (signal.jet_pt < signal_bin_edges[i+1]) ] = np.ones(signal.loc[ (signal.jet_pt > signal_bin_edges[i]) & (signal.jet_pt < signal_bin_edges[i+1]) ].shape[0]) * 1/(signal_flatWeights[i])
-        qcd["flatWeight"].loc[ (qcd.jet_pt > qcd_bin_edges[i]) & (qcd.jet_pt < qcd_bin_edges[i+1]) ] = np.ones(qcd.loc[ (qcd.jet_pt > qcd_bin_edges[i]) & (qcd.jet_pt < qcd_bin_edges[i+1]) ].shape[0]) * qcd_correction/(qcd_flatWeights[i])
+        #qcd["flatWeight"].loc[ (qcd.jet_pt > qcd_bin_edges[i]) & (qcd.jet_pt < qcd_bin_edges[i+1]) ] = np.ones(qcd.loc[ (qcd.jet_pt > qcd_bin_edges[i]) & (qcd.jet_pt < qcd_bin_edges[i+1]) ].shape[0]) * qcd_correction/(qcd_flatWeights[i])
+        qcd["flatWeight"].loc[ (qcd.jet_pt > qcd_bin_edges[i]) & (qcd.jet_pt < qcd_bin_edges[i+1]) ] = qcd["mcEventWeight"].loc[ (qcd.jet_pt > qcd_bin_edges[i]) & (qcd.jet_pt < qcd_bin_edges[i+1]) ] * qcd_correction/(qcd_flatWeights[i])
         bib["flatWeight"].loc[ (bib.jet_pt > bib_bin_edges[i]) & (bib.jet_pt < bib_bin_edges[i+1]) ] = np.ones(bib.loc[ (bib.jet_pt > bib_bin_edges[i]) & (bib.jet_pt < bib_bin_edges[i+1]) ].shape[0]) * bib_correction/(bib_flatWeights[i])
 
     print(np.sum(signal["flatWeight"].loc[ (signal.jet_pt > low_bin) & (signal.jet_pt < high_bin)].values))
@@ -96,7 +105,7 @@ def flatten(data, low_bin, high_bin, n_bins):
     df = df.append(qcd)
     df = df.append(bib)
 
-    do_plotting(signal,qcd,bib,"jet_pt",40000,200000,20)
+    do_plotting(signal,qcd,bib,"jet_pt",low_bin,high_bin,n_bins)
 
     return(df)
 
