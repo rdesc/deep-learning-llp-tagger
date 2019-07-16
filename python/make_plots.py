@@ -32,6 +32,8 @@ def plot_three_histos(signal,qcd,bib,name,xmin,xmax,bins, prefix):
     ax.hist(bib, range=(xmin,xmax), density=True, color='green',alpha=0.5, linewidth=0,histtype='stepfilled',bins=bins,label="BIB")
     ax.set_xlabel(name)
     ax.set_ylabel("Arb. Units")
+    if "jet_pt" in name or "hcal" in name or "ecal" in name:
+        ax.set_yscale('log', nonposy='clip')
     ax.legend()
 
     textstr = prefix 
@@ -102,6 +104,9 @@ def plot_constit(x_constit,y_constit,z_constit,name, prefix):
 def plot_2d_histos(signal_x, qcd_x, bib_x, name_x, xmin, xmax, x_bins,  signal_y, qcd_y, bib_y, name_y, ymin, ymax, y_bins, prefix): 
     cmap_sig = sns.cubehelix_palette(rot=-.4,dark=0, light=1,as_cmap=True)
 
+    print(signal_x)
+    print(signal_y)
+
     plt.figure()
     plt.hist2d(signal_x, signal_y, bins=[x_bins, y_bins], range=[[xmin,xmax],[ymin,ymax]], norm = LogNorm(), cmap = cmap_sig)  
 
@@ -141,16 +146,24 @@ def do_plotting_2D(signal,qcd,bib,name_x,xmin,xmax,x_bins, name_y, ymin,ymax,y_b
     filter_nn_x = [col for col in signal if col.startswith(name_x)]
     filter_nn_y = [col for col in signal if col.startswith(name_y)]
 
-    signal_x = remove_values_from_list(signal[filter_nn_x].values.flatten(),np.nan)
-    qcd_x = remove_values_from_list(qcd[filter_nn_x].values.flatten(),np.nan)
-    bib_x = remove_values_from_list(bib[filter_nn_x].values.flatten(),np.nan)
+    #signal_x = remove_values_from_list(signal[filter_nn_x].values.flatten(),np.nan)
+    #qcd_x = remove_values_from_list(qcd[filter_nn_x].values.flatten(),np.nan)
+    #bib_x = remove_values_from_list(bib[filter_nn_x].values.flatten(),np.nan)
 
-    signal_y = remove_values_from_list(signal[filter_nn_y].values.flatten(),np.nan)
-    qcd_y = remove_values_from_list(qcd[filter_nn_y].values.flatten(),np.nan)
-    bib_y = remove_values_from_list(bib[filter_nn_y].values.flatten(),np.nan)
+    #signal_y = remove_values_from_list(signal[filter_nn_y].values.flatten(),np.nan)
+    #qcd_y = remove_values_from_list(qcd[filter_nn_y].values.flatten(),np.nan)
+    #bib_y = remove_values_from_list(bib[filter_nn_y].values.flatten(),np.nan)
+
+    signal_x = signal[filter_nn_x].dropna()
+    qcd_x = qcd[filter_nn_x].dropna()
+    bib_x = bib[filter_nn_x].dropna()
+
+    signal_y = signal[filter_nn_y].dropna()
+    qcd_y = qcd[filter_nn_y].dropna()
+    bib_y = bib[filter_nn_y].dropna()
 
     if ( (len(signal_x)==len(signal_y)) and (len(qcd_x)==len(qcd_y)) and (len(bib_x)==len(bib_y)) ):
-        plot_2d_histos(signal_x, qcd_x, bib_x, name_x, xmin, xmax, x_bins,  signal_y, qcd_y, bib_y, name_y, ymin, ymax, y_bins, prefix) 
+        plot_2d_histos(np.asarray(signal_x.values.flatten()), np.asarray(qcd_x.values.flatten()), np.asarray(bib_x.values.flatten()), name_x, xmin, xmax, x_bins,  np.asarray(signal_y.values.flatten()), np.asarray(qcd_y.values.flatten()), np.asarray(bib_y.values.flatten()), name_y, ymin, ymax, y_bins, prefix) 
 
 
 
@@ -158,12 +171,16 @@ def do_plotting(signal,qcd,bib,name,xmin,xmax,bins, prefix):
 
     filter_nn_MSeg = [col for col in signal if col.startswith(name)]
 
-    signal_MSeg = remove_values_from_list(signal[filter_nn_MSeg].values.flatten(),np.nan)
-    qcd_MSeg = remove_values_from_list(qcd[filter_nn_MSeg].values.flatten(),np.nan)
-    bib_MSeg = remove_values_from_list(bib[filter_nn_MSeg].values.flatten(),np.nan)
+    #signal_MSeg = remove_values_from_list(signal[filter_nn_MSeg].values.flatten(),np.nan)
+    #qcd_MSeg = remove_values_from_list(qcd[filter_nn_MSeg].values.flatten(),np.nan)
+    #bib_MSeg = remove_values_from_list(bib[filter_nn_MSeg].values.flatten(),np.nan)
+
+    signal_MSeg = signal[filter_nn_MSeg].dropna()
+    qcd_MSeg = qcd[filter_nn_MSeg].dropna()
+    bib_MSeg = bib[filter_nn_MSeg].dropna()
 
 
-    plot_three_histos(signal_MSeg,qcd_MSeg,bib_MSeg,name,xmin,xmax,bins, prefix)
+    plot_three_histos(signal_MSeg.values.flatten(),qcd_MSeg.values.flatten(),bib_MSeg.values.flatten(),name,xmin,xmax,bins, prefix)
 
 def do_plotting_withCut(signal,qcd,bib,name,xmin,xmax,bins, prefix, cutVariable, cutValue):
 
@@ -185,6 +202,17 @@ def do_plotting_withCut(signal,qcd,bib,name,xmin,xmax,bins, prefix, cutVariable,
                 signal_list_above_cut.append( remove_values_from_list((signal[original])[(signal[cutVar] > cutValue) | (signal[cutVar] < -cutValue)].values.flatten(),np.nan) )
                 qcd_list_above_cut.append( remove_values_from_list((qcd[original])[(qcd[cutVar] > cutValue) | (qcd[cutVar] < -cutValue)].values.flatten(),np.nan) )
                 bib_list_above_cut.append( remove_values_from_list((bib[original])[(bib[cutVar] > cutValue) | (bib[cutVar] < -cutValue)].values.flatten(),np.nan) )
+                '''
+                signal_list_below_cut.append(((signal[original])[(signal[cutVar] < cutValue) & (signal[cutVar] > -cutValue)].dropna()).values.flatten())
+                qcd_list_below_cut.append(((qcd[original])[(qcd[cutVar] < cutValue) & (qcd[cutVar] > -cutValue)].dropna()).values.flatten())
+                bib_list_below_cut.append(((bib[original].dropna())[(bib[cutVar] < cutValue) & (bib[cutVar] > -cutValue)].dropna()).values.flatten())
+
+                signal_list_above_cut.append(((signal[original].dropna())[(signal[cutVar] > cutValue) & (signal[cutVar] < -cutValue)].dropna()).values.flatten())
+                qcd_list_above_cut.append(((qcd[original].dropna())[(qcd[cutVar] > cutValue) & (qcd[cutVar] < -cutValue)].dropna()).values.flatten())
+                bib_list_above_cut.append(((bib[original].dropna())[(bib[cutVar] > cutValue) & (bib[cutVar] < -cutValue)].dropna()).values.flatten())
+                '''
+
+
     elif ( len(filter_nn_MSeg)>len(filter_nn_cut) ):
 	    for (original, cutVar)  in zip(filter_nn_MSeg,cycle(filter_nn_cut)):
                 signal_list_below_cut.append( remove_values_from_list((signal[original])[(signal[cutVar] < cutValue) & (signal[cutVar] > -cutValue)].values.flatten(),np.nan) )
@@ -193,6 +221,15 @@ def do_plotting_withCut(signal,qcd,bib,name,xmin,xmax,bins, prefix, cutVariable,
                 signal_list_above_cut.append( remove_values_from_list((signal[original])[(signal[cutVar] > cutValue) | (signal[cutVar] < -cutValue)].values.flatten(),np.nan) )
                 qcd_list_above_cut.append( remove_values_from_list((qcd[original])[(qcd[cutVar] > cutValue) | (qcd[cutVar] < -cutValue)].values.flatten(),np.nan) )
                 bib_list_above_cut.append( remove_values_from_list((bib[original])[(bib[cutVar] > cutValue) | (bib[cutVar] < -cutValue)].values.flatten(),np.nan) )
+                '''
+                signal_list_below_cut.append(((signal[original])[(signal[cutVar] < cutValue) & (signal[cutVar] > -cutValue)].dropna()).values.flatten())
+                qcd_list_below_cut.append(((qcd[original])[(qcd[cutVar] < cutValue) & (qcd[cutVar] > -cutValue)].dropna()).values.flatten())
+                bib_list_below_cut.append(((bib[original].dropna())[(bib[cutVar] < cutValue) & (bib[cutVar] > -cutValue)].dropna()).values.flatten())
+
+                signal_list_above_cut.append(((signal[original].dropna())[(signal[cutVar] > cutValue) & (signal[cutVar] < -cutValue)].dropna()).values.flatten())
+                qcd_list_above_cut.append(((qcd[original].dropna())[(qcd[cutVar] > cutValue) & (qcd[cutVar] < -cutValue)].dropna()).values.flatten())
+                bib_list_above_cut.append(((bib[original].dropna())[(bib[cutVar] > cutValue) & (bib[cutVar] < -cutValue)].dropna()).values.flatten())
+                '''
     else:
 	    for (original, cutVar)  in zip(cycle(filter_nn_MSeg),filter_nn_cut):
                 signal_list_below_cut.append( remove_values_from_list((signal[original])[(signal[cutVar] < cutValue) & (signal[cutVar] > -cutValue)].values.flatten(),np.nan) )
@@ -201,6 +238,15 @@ def do_plotting_withCut(signal,qcd,bib,name,xmin,xmax,bins, prefix, cutVariable,
                 signal_list_above_cut.append( remove_values_from_list((signal[original])[(signal[cutVar] > cutValue) | (signal[cutVar] < -cutValue)].values.flatten(),np.nan) )
                 qcd_list_above_cut.append( remove_values_from_list((qcd[original])[(qcd[cutVar] > cutValue) | (qcd[cutVar] < -cutValue)].values.flatten(),np.nan) )
                 bib_list_above_cut.append( remove_values_from_list((bib[original])[(bib[cutVar] > cutValue) | (bib[cutVar] < -cutValue)].values.flatten(),np.nan) )
+                '''
+                signal_list_below_cut.append(((signal[original])[(signal[cutVar] < cutValue) & (signal[cutVar] > -cutValue)].dropna()).values.flatten())
+                qcd_list_below_cut.append(((qcd[original])[(qcd[cutVar] < cutValue) & (qcd[cutVar] > -cutValue)].dropna()).values.flatten())
+                bib_list_below_cut.append(((bib[original].dropna())[(bib[cutVar] < cutValue) & (bib[cutVar] > -cutValue)].dropna()).values.flatten())
+
+                signal_list_above_cut.append(((signal[original].dropna())[(signal[cutVar] > cutValue) & (signal[cutVar] < -cutValue)].dropna()).values.flatten())
+                qcd_list_above_cut.append(((qcd[original].dropna())[(qcd[cutVar] > cutValue) & (qcd[cutVar] < -cutValue)].dropna()).values.flatten())
+                bib_list_above_cut.append(((bib[original].dropna())[(bib[cutVar] > cutValue) & (bib[cutVar] < -cutValue)].dropna()).values.flatten())
+                '''
 
         
     '''
@@ -247,6 +293,8 @@ def plot_vars(data, prefix=""):
     bib = data[data.label == 2]
     print(bib.shape[0])
 
+    print("Preparing plotting script")
+
     if "cleanJets" in prefix:
         signal = signal[signal.jet_isClean_LooseBadLLP == 1]
         qcd = qcd[qcd.jet_isClean_LooseBadLLP == 1]
@@ -254,21 +302,37 @@ def plot_vars(data, prefix=""):
 
 
     #TODO: BE SMARTER ABOUT THIS!!!!!!
-    signal_clus_pt = signal.iloc[:,slice(14,14+28*20,28)]
-    qcd_clus_pt = qcd.iloc[:,slice(14,14+28*20,35)]
-    bib_clus_pt = bib.iloc[:,slice(14,14+28*20,35)]
 
-    signal_clus_eta = signal.iloc[:,slice(15,15+28*20,28)]
-    qcd_clus_eta = qcd.iloc[:,slice(15,15+28*20,28)]
-    bib_clus_eta = bib.iloc[:,slice(15,15+28*20,28)]
+    clusPt_loc = signal.columns.get_loc('clus_pt_0')
+    clusEta_loc = signal.columns.get_loc('clus_eta_0')
+    clusPhi_loc = signal.columns.get_loc('clus_phi_0')
+    print(clusPt_loc)
+    signal_clus_pt = signal.iloc[:,slice(clusPt_loc,clusPt_loc+28*20,28)]
+    qcd_clus_pt = qcd.iloc[:,slice(clusPt_loc,clusPt_loc+28*20,35)]
+    bib_clus_pt = bib.iloc[:,slice(clusPt_loc,clusPt_loc+28*20,35)]
 
-    signal_clus_phi = signal.iloc[:,slice(16,16+28*20,28)]
-    qcd_clus_phi = qcd.iloc[:,slice(16,16+28*20,28)]
-    bib_clus_phi = bib.iloc[:,slice(16,16+28*20,28)]
+    signal_clus_eta = signal.iloc[:,slice(clusEta_loc,clusEta_loc+28*20,28)]
+    qcd_clus_eta = qcd.iloc[:,slice(clusEta_loc,clusEta_loc+28*20,28)]
+    bib_clus_eta = bib.iloc[:,slice(clusEta_loc,clusEta_loc+28*20,28)]
+
+    signal_clus_phi = signal.iloc[:,slice(clusPhi_loc,clusPhi_loc+28*20,28)]
+    qcd_clus_phi = qcd.iloc[:,slice(clusPhi_loc,clusPhi_loc+28*20,28)]
+    bib_clus_phi = bib.iloc[:,slice(clusPhi_loc,clusPhi_loc+28*20,28)]
+
+    if "processing" in prefix:
+        signal_clus_pt = signal.iloc[:,slice(clusPt_loc,clusPt_loc+4*20,4)]
+        qcd_clus_pt = qcd.iloc[:,slice(clusPt_loc,clusPt_loc+4*20,35)]
+        bib_clus_pt = bib.iloc[:,slice(clusPt_loc,clusPt_loc+4*20,35)]
+
+        signal_clus_eta = signal.iloc[:,slice(clusEta_loc,clusEta_loc+4*20,4)]
+        qcd_clus_eta = qcd.iloc[:,slice(clusEta_loc,clusEta_loc+4*20,4)]
+        bib_clus_eta = bib.iloc[:,slice(clusEta_loc,clusEta_loc+4*20,4)]
+
+        signal_clus_phi = signal.iloc[:,slice(clusPhi_loc,clusPhi_loc+4*20,4)]
+        qcd_clus_phi = qcd.iloc[:,slice(clusPhi_loc,clusPhi_loc+4*20,4)]
+        bib_clus_phi = bib.iloc[:,slice(clusPhi_loc,clusPhi_loc+4*20,4)]
 
     #jet_eta studies
-    signal['aux_llp_jet_eta_difference'] = signal['aux_llp_eta'] - signal['jet_eta']
-    signal['aux_llp_jet_pt_difference'] = signal['aux_llp_pt'] - signal['jet_eta'].divide(1000)
 
     signal_all_clus_pt = remove_values_from_list(signal_clus_pt.values.flatten(),np.nan)
     qcd_all_clus_pt = remove_values_from_list(qcd_clus_pt.values.flatten(),np.nan)
@@ -281,6 +345,8 @@ def plot_vars(data, prefix=""):
     signal_all_clus_phi = remove_values_from_list(signal_clus_phi.values.flatten(),np.nan)
     qcd_all_clus_phi = remove_values_from_list(qcd_clus_phi.values.flatten(),np.nan)
     bib_all_clus_phi = remove_values_from_list(bib_clus_phi.values.flatten(),np.nan)
+
+    print("Plotting Constits")
  
     plot_constit(signal_all_clus_eta,signal_all_clus_phi, signal_all_clus_pt, "signal_constits", prefix)
     plot_constit(bib_all_clus_eta,bib_all_clus_phi, bib_all_clus_pt, "bib_constits", prefix)
@@ -303,14 +369,27 @@ def plot_vars(data, prefix=""):
     truth_xmin = [1000, 1000, 40, -2.5, -3.14]
     truth_xmax = [4000, 5000, 300, 2.5, 3.14]
     truth_bins = [20,20,20,20,20]
+   
+    print("Plotting 2D Plots")
 
     do_plotting_2D(signal,qcd,bib,"nn_MSeg_etaDir",-8,8,40,"nn_MSeg_etaPos", -1.5,2.5,40, prefix)
     do_plotting_2D(signal,signal,signal,"aux_llp_eta",-1.5,1.5,40,"aux_llp_Lxy", 1000,4000,60, prefix)
+    signal['aux_llp_jet_eta_difference'] = signal['aux_llp_eta'] - signal['jet_eta']
+    signal['aux_llp_jet_pt_difference'] = signal['aux_llp_pt'] - signal['jet_pt'].divide(1000)
     do_plotting_2D(signal,signal,signal,"aux_llp_jet_eta_difference",-0.4,0.4,40,"aux_llp_eta", -1.5,1.5,60, prefix)
-    do_plotting_2D(signal,signal,signal,"aux_llp_jet_pt_difference",-0.4,0.4,40,"aux_llp_pt", -1.5,1.5,60, prefix)
-    do_plotting_withCut(signal,qcd,bib,"nn_MSeg_etaDir",-8,8,20,prefix,"jet_eta",1.0)
+    do_plotting_2D(signal,signal,signal,"aux_llp_jet_pt_difference",40,300,40,"aux_llp_eta", -1.5,1.5,60, prefix)
+
+    print("Plotting Cut Plots")
+
+    #do_plotting_withCut(signal,qcd,bib,"nn_MSeg_etaDir",-8,8,20,prefix,"jet_eta",1.0)
+
+    print("Plotting Truth Plots")
+
     do_truth_plotting(signal,truth_dist,truth_xmin,truth_xmax,truth_bins,prefix)
     #do_plotting_withCut(signal,qcd,bib,"nn_MSeg_etaDir",-8,8,20,prefix,"nn_MSeg_etaPos",1.0)
+
+    print("Plotting Variable Plots")
+
     for key in xmin_dict:
        do_plotting(signal,qcd,bib,key,xmin_dict[key],xmax_dict[key],bin_dict[key], prefix)
  

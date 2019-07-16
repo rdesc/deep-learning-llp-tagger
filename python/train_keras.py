@@ -41,7 +41,8 @@ tf.set_random_seed(1)
 sess = tf.Session(graph=tf.get_default_graph(), config=session_conf)
 keras.backend.set_session(sess)
 
-df = pd.read_pickle("/data/fcormier/calRatio/fullRun2/transformOutput/layerChanges/processed_output.pkl")
+#df = pd.read_pickle("/data/fcormier/calRatio/fullRun2/transformOutput/layerChanges/processed_output.pkl")
+df = pd.read_pickle("/data/fcormier/calRatio/fullRun2/transformOutput/2019-07-10_17:18:21_603916/processed_output.pkl")
 df = df.fillna(0)
 
  
@@ -71,6 +72,7 @@ print("Length of BIB is: " + str(df[df.label==2].shape[0]) )
 
 Y = df['label']
 weights = df['flatWeight']
+mcWeights = df['mcEventWeight']
 X= df.loc[:,'jet_pt':'l4_hcal_29']
 del X['llp_mS']
 del X['llp_mH']
@@ -78,7 +80,8 @@ del X['jet_isClean_LooseBadLLP']
 Z = df.loc[:,'llp_mH':'llp_mS']
 
 
-X_train, X_test, y_train, y_test, weights_train, weights_test, Z_train, Z_test = train_test_split(X, Y, weights, Z, test_size = 0.1)
+X_train, X_test, y_train, y_test, weights_train, weights_test, mcWeights_train, mcWeights_test,  Z_train, Z_test = train_test_split(X, Y, weights, mcWeights, Z, test_size = 0.2)
+X_test, X_val, y_test, y_val, weights_test, weights_val, mcWeights_test, mcWeights_val, Z_test, Z_val = train_test_split(X_test, y_test, weights_test, mcWeights_test,  Z_test, test_size = 0.5)
 
 del X
 del Y
@@ -88,7 +91,7 @@ del Z
 model_to_do = "dense"
 
 
-y_val = np_utils.to_categorical(y_test)
+y_test = np_utils.to_categorical(y_test)
 y_train = np_utils.to_categorical(y_train)
 
 if("lstm" in model_to_do):
@@ -236,7 +239,7 @@ if("lstm" in model_to_do):
     plt.savefig("plots/loss_monitoring"+ model_to_do +".pdf", format='pdf', transparent=True)
 
     '''
-    evaluate_model(X_test, y_test, weights_test, Z_test, model_to_do, deleteTime)
+    evaluate_model(X_val, y_val, weights_val, mcWeights_val,  Z_val, model_to_do, deleteTime)
 
     
 
@@ -246,25 +249,26 @@ if (model_to_do == "dense"):
 
     model = Sequential()
 
-    model.add(Dense(600, input_dim=X_train.shape[1]))
+    model.add(Dense(1024, input_dim=X_train.shape[1]))
     model.add(Dropout(0.2))
     model.add(Activation('relu'))
-    model.add(Dense(202))
+    model.add(Dense(512))
     model.add(Dropout(0.2))
     model.add(Activation('relu'))
-    model.add(Dense(22))
+    model.add(Dense(124))
     model.add(Dropout(0.2))
     model.add(Activation('relu'))
-    model.add(Dense(12))
+    model.add(Dense(24))
     model.add(Activation('relu'))
     model.add(Dense(3))
     model.add(Activation('softmax'))
     model.compile(optimizer='Adam', loss='categorical_crossentropy', metrics=['accuracy'])
     model.summary()
-    history = model.fit(X_train.values, y_train, sample_weight= weights_train.values, epochs=100, batch_size=512, validation_data = (X_test.values, y_val, weights_test.values),callbacks=[
+    '''
+    history = model.fit(X_train.values, y_train, sample_weight= weights_train.values, epochs=50, batch_size=512, validation_data = (X_test.values, y_test, weights_test.values),callbacks=[
                         EarlyStopping(
                             verbose=True,
-                            patience=20,
+                            patience=10,
                             monitor='val_acc'),
                         ModelCheckpoint(
                             'keras_outputs/checkpoint_'+model_to_do,
@@ -292,4 +296,5 @@ if (model_to_do == "dense"):
     plt.xlabel('epoch')
     plt.legend(['train', 'test'], loc='upper left')
     plt.savefig("plots/loss_monitoring"+ ".pdf", format='pdf', transparent=True)
-    evaluate_model(X_test, y_test, weights_test, Z_test,  model_to_do, deleteTime)
+    '''
+    evaluate_model(X_val, y_val, weights_val, mcWeights_val, Z_val,  model_to_do, deleteTime)

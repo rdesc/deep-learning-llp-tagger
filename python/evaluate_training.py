@@ -34,10 +34,13 @@ from matplotlib.offsetbox import AnchoredText
 from mpl_toolkits.mplot3d import Axes3D
 
 
+
 import sys
 import seaborn as sns
 import re
 import sklearn
+
+from sklearn.preprocessing import label_binarize
 
 from numpy import unravel_index
 
@@ -47,19 +50,19 @@ def find_threshold(prediction,y, weight, perc, label):
     #Instead of lame loops let's order our data, then find percentage from there
     #prediction is 3xN, want to sort by BIB weight
 
-    bib_events_y = y[y==2]
-    bib_events_prediction = prediction[y==2]
+    label_events_y = y[y==label]
+    label_events_prediction = prediction[y==label]
 
-    prediction_sorted = np.array(bib_events_prediction[bib_events_prediction[:,2].argsort()])
-    y_sorted = bib_events_y[bib_events_prediction[:,2].argsort()]
+    prediction_sorted = np.array(label_events_prediction[label_events_prediction[:,label].argsort()])
+    y_sorted = label_events_y[label_events_prediction[:,label].argsort()]
 
     #print(prediction)
     #print(prediction[:,2])
     #print(prediction[prediction[:,2].argsort()])
 
-    cutoffIndex = round(((100-perc)/100)*bib_events_y.size)
+    cutoffIndex = round(((100-perc)/100)*label_events_y.size)
     print("CutoffIndex: " + str(int(cutoffIndex)))
-    threshold = prediction_sorted.item((int(cutoffIndex),2))
+    threshold = prediction_sorted.item((int(cutoffIndex),label))
     print("Treshold: " + str(threshold))
 
     leftovers = np.where(
@@ -111,6 +114,7 @@ def make_multi_roc_curve(prediction,y,weight,threshold,label,leftovers):
     bib_tot = np.sum(np.where(np.equal(y, 2), weight, 0))
     prediction_left = prediction[leftovers]
     y_left = y.values[leftovers]
+    print(len(y_left))
     weight_left = weight.values[leftovers]
 
     num_signal_original = y[y==1].size
@@ -121,16 +125,40 @@ def make_multi_roc_curve(prediction,y,weight,threshold,label,leftovers):
     num_qcd_leftover = np.sum(weight_left[y_left==0])
     qcd_ratio = num_qcd_leftover/num_qcd_original
 
+    num_bib_original = np.sum(weight.values[y==2])
+    num_bib_leftover = np.sum(weight_left[y_left==2])
+    bib_ratio = num_bib_leftover/num_bib_original
+
 
     sig_left = np.sum(np.where(np.equal(y_left, 1), weight_left, 0))
     qcd_left = np.sum(np.where(np.equal(y_left, 0), weight_left, 0))
     bib_left = np.sum(np.where(np.equal(y_left, 2), weight_left, 0))
     prediction_left_signal = prediction_left[:,1]
+    prediction_left_qcd = prediction_left[:,0]
+    prediction_left_bib = prediction_left[:,2]
     #y_left[y_left==2] = 0
-    (fpr, tpr, _) = roc_curve(y_left, prediction_left_signal, sample_weight=weight_left, pos_label=1)
-    a = auc(fpr*qcd_ratio,tpr*signal_ratio)
 
-    return fpr, tpr, a, signal_ratio, qcd_ratio
+    if label == 2:
+        
+        y_roc = label_binarize(y_left, classes=[0, 1, 2])
+        (fpr, tpr, _) = roc_curve(y_roc[:,1], prediction_left_signal,  pos_label=1)
+        #(fpr, tpr, _) = roc_curve(y_left, prediction_left_signal, sample_weight=weight_left, pos_label=1)
+        #print(str(list(1-fpr[1000:1100])))
+        #print(str(list(tpr[1000:1100])))
+        a = auc((1-fpr)*qcd_ratio,tpr*signal_ratio)
+        
+        return (1/fpr)*qcd_ratio, tpr*signal_ratio, a
+
+
+    if label == 0:
+        
+        y_roc = label_binarize(y_left, classes=[0, 1, 2])
+        (fpr, tpr, _) = roc_curve(y_roc[:,1], prediction_left_signal, sample_weight=weight_left, pos_label=1)
+        #print(str(list(1-fpr[1000:1100])))
+        #print(str(list(tpr[1000:1100])))
+        a = auc((1-fpr)*bib_ratio,tpr*signal_ratio)
+        
+        return (1/fpr)*bib_ratio, tpr*signal_ratio, a
 
 
 def get_efficiencies_with_weights(py, y ,weight, threshold):
@@ -191,12 +219,18 @@ def plot_prediction_histograms(destination,
     fig,ax = plt.subplots()
     textstr = model_to_do 
 
-    ax.hist(prediction[sig_rows][:,1], weights=weight.values[sig_rows], color='red',alpha=0.5,linewidth=0, histtype='stepfilled',bins=50,label="Signal")
-    ax.hist(prediction[bkg_rows][:,1], weights=weight.values[bkg_rows], color='blue',alpha=0.5, linewidth=0,histtype='stepfilled',bins=50,label="QCD")
-    ax.hist(prediction[bib_rows][:,1], weights=weight.values[bib_rows], color='green',alpha=0.5, linewidth=0,histtype='stepfilled',bins=50,label="BIB")
+    #ax.hist(prediction[sig_rows][:,1], weights=weight.values[sig_rows], color='red',alpha=0.5,linewidth=0, histtype='stepfilled',bins=50,label="Signal")
+    #ax.hist(prediction[bkg_rows][:,1], weights=weight.values[bkg_rows], color='blue',alpha=0.5, linewidth=0,histtype='stepfilled',bins=50,label="QCD")
+    #ax.hist(prediction[bib_rows][:,1], weights=weight.values[bib_rows], color='green',alpha=0.5, linewidth=0,histtype='stepfilled',bins=50,label="BIB")
+    bin_list = np.zeros(1)
+    bin_list = np.append(bin_list,np.logspace(np.log10(0.00001),np.log10(1.0), 50))
+    ax.hist(prediction[sig_rows][:,1], color='red',alpha=0.5,linewidth=0, histtype='stepfilled',bins=bin_list,label="Signal")
+    ax.hist(prediction[bkg_rows][:,1], color='blue',alpha=0.5, linewidth=0,histtype='stepfilled',bins=bin_list,label="QCD")
+    ax.hist(prediction[bib_rows][:,1], color='green',alpha=0.5, linewidth=0,histtype='stepfilled',bins=bin_list,label="BIB")
     plt.yscale('log', nonposy='clip')
+    plt.xscale('log', nonposx='clip')
     ax.set_xlabel("Signal NN weight")
-    ax.legend()
+    ax.legend(loc='best')
 
     #matplotlib.patch.Patch properties
     props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
@@ -209,11 +243,12 @@ def plot_prediction_histograms(destination,
 
 
     fig,ax = plt.subplots()
-    ax.hist(prediction[sig_rows][:,0], weights=weight.values[sig_rows], color='red',alpha=0.5,linewidth=0, histtype='stepfilled',bins=50,label="Signal")
-    ax.hist(prediction[bkg_rows][:,0], weights=weight.values[bkg_rows], color='blue',alpha=0.5, linewidth=0,histtype='stepfilled',bins=50,label="QCD")
-    ax.hist(prediction[bib_rows][:,0], weights=weight.values[bib_rows], color='green',alpha=0.5, linewidth=0,histtype='stepfilled',bins=50,label="BIB")
+    ax.hist(prediction[sig_rows][:,0], weights=weight.values[sig_rows], color='red',alpha=0.5,linewidth=0, histtype='stepfilled',bins=bin_list,label="Signal")
+    ax.hist(prediction[bkg_rows][:,0], weights=weight.values[bkg_rows], color='blue',alpha=0.5, linewidth=0,histtype='stepfilled',bins=bin_list,label="QCD")
+    ax.hist(prediction[bib_rows][:,0], weights=weight.values[bib_rows], color='green',alpha=0.5, linewidth=0,histtype='stepfilled',bins=bin_list,label="BIB")
     plt.yscale('log', nonposy='clip')
     ax.set_xlabel("QCD NN weight")
+    plt.xscale('log', nonposx='clip')
     ax.legend()
 
     #matplotlib.patch.Patch properties
@@ -227,11 +262,12 @@ def plot_prediction_histograms(destination,
 
 
     fig,ax = plt.subplots()
-    ax.hist(prediction[sig_rows][:,2], weights=weight.values[sig_rows], color='red',alpha=0.5,linewidth=0, histtype='stepfilled',bins=50,label="Signal")
-    ax.hist(prediction[bkg_rows][:,2], weights=weight.values[bkg_rows], color='blue',alpha=0.5, linewidth=0,histtype='stepfilled',bins=50,label="QCD")
-    ax.hist(prediction[bib_rows][:,2], weights=weight.values[bib_rows], color='green',alpha=0.5, linewidth=0,histtype='stepfilled',bins=50,label="BIB")
+    ax.hist(prediction[sig_rows][:,2], weights=weight.values[sig_rows], color='red',alpha=0.5,linewidth=0, histtype='stepfilled',bins=bin_list,label="Signal")
+    ax.hist(prediction[bkg_rows][:,2], weights=weight.values[bkg_rows], color='blue',alpha=0.5, linewidth=0,histtype='stepfilled',bins=bin_list,label="QCD")
+    ax.hist(prediction[bib_rows][:,2], weights=weight.values[bib_rows], color='green',alpha=0.5, linewidth=0,histtype='stepfilled',bins=bin_list,label="BIB")
     plt.yscale('log', nonposy='clip')
     ax.set_xlabel("BIB NN weight")
+    plt.xscale('log', nonposx='clip')
     ax.legend()
 
     #matplotlib.patch.Patch properties
@@ -249,22 +285,22 @@ def evaluate_model(X_test, y_test, weights_test, mcWeights_test,  Z_test,  model
     if (model_to_do == "dense"):
 
         model = Sequential()
-        model.add(Dense(600, input_dim=X_test.shape[1]))
+        model.add(Dense(1024, input_dim=X_test.shape[1]))
         model.add(Dropout(0.2))
         model.add(Activation('relu'))
-        model.add(Dense(202))
+        model.add(Dense(512))
         model.add(Dropout(0.2))
         model.add(Activation('relu'))
-        model.add(Dense(22))
+        model.add(Dense(124))
         model.add(Dropout(0.2))
         model.add(Activation('relu'))
-        model.add(Dense(12))
+        model.add(Dense(24))
         model.add(Activation('relu'))
         model.add(Dense(3))
         model.add(Activation('softmax'))
         model.compile(optimizer='Adam', loss='categorical_crossentropy', metrics=['accuracy'])
         model.summary()
-        model.load_weights("keras_outputs/"+model_to_do)
+        model.load_weights("keras_outputs/checkpoint_"+model_to_do)
 
     if ("lstm" in model_to_do):
 
@@ -368,25 +404,28 @@ def evaluate_model(X_test, y_test, weights_test, mcWeights_test,  Z_test,  model
     mcWeights_test[y_test==2] *= bib_weight_length/bib_weight
     mcWeights_test[y_test==1] *= sig_weight_length/sig_weight
     destination = "plots/"+model_to_do + "/"
-    plot_prediction_histograms(destination,prediction,y_test, weights_test, model_to_do)
+    plot_prediction_histograms(destination,prediction,y_test, mcWeights_test, model_to_do)
     #threshold_array = np.logspace(-0.1,-0.001,30)[::-3]
     threshold_array = [0.9999,(1-0.001),(1-0.003),(1-0.009),(1-0.023),(1-0.059),(1-0.151),(1-0.389),0.001]
+    #threshold_array = [0.995,(1-0.009),(1-0.023),(1-0.059),(1-0.151),(1-0.389),0.001]
     counter=0
+    third_label=2
+
+
     #threshold_array = [0.99,(1-0.03),(1-0.09),(1-0.23),(1-0.59),0.001]
     #threshold_array =  np.logspace(-4,0,30)[::-3]
     #for percent in range(0,100,10):
     signal_llp_efficiencies(prediction,y_test,Z_test, destination)
     for item in threshold_array:
         test_perc = item*100
-        test_label = 2
+        test_label = third_label
         #print(prediction.shape)
         #print(y_predictions.shape)
         test_threshold, leftovers = find_threshold(prediction,y_test, mcWeights_test, test_perc, test_label)
-        bkg_eff, tag_eff, roc_auc, sig_ratio, qcd_ratio = make_multi_roc_curve(prediction,y_test,mcWeights_test,test_threshold,test_label,leftovers)
+        bkg_eff, tag_eff, roc_auc = make_multi_roc_curve(prediction,y_test,mcWeights_test,test_threshold,test_label,leftovers)
         print("AUC: " + str(roc_auc) )
-        plt.plot(tag_eff*sig_ratio, (1.0-bkg_eff)*qcd_ratio, label= f"BIB Eff: {(-item+1):.3f}" +f", AUC: {roc_auc:.3f}")
+        plt.plot(tag_eff, bkg_eff, label= f"BIB Eff: {(-item+1):.3f}" +f", AUC: {roc_auc:.3f}")
         plt.xlabel("LLP Tagging Efficiency")
-        plt.ylabel("QCD Efficiency")
         axes = plt.gca()
         axes.set_xlim([0,1])
         counter=counter+1
@@ -400,7 +439,17 @@ def evaluate_model(X_test, y_test, weights_test, mcWeights_test,  Z_test,  model
     #    bbox=dict(facecolor='none', edgecolor='black', boxstyle='round,pad=1'))
     plt.legend()
     plt.yscale('log', nonposy='clip')
-    plt.savefig(destination + "roc_curve_atlas_all" + ".pdf", format='pdf', transparent=True)
+    signal_test = prediction[y_test==1]
+    qcd_test = prediction[y_test==0]
+    print(signal_test[0:100].shape)
+    print("Length of Signal: " + str(len(signal_test)) + ", length of signal with weight 1: " + str(len(signal_test[signal_test[:,1]<0.1])))
+    print("Length of QCD: " + str(len(qcd_test)) + ", length of qcd with weight 1: " + str(len(qcd_test[qcd_test[:,1]<0.1])))
+    if third_label == 2:
+        plt.ylabel("QCD Rejection")
+        plt.savefig(destination + "roc_curve_atlas_rej_bib" + ".pdf", format='pdf', transparent=True)
+    if third_label == 0:
+        plt.ylabel("BIB Rejection")
+        plt.savefig(destination + "roc_curve_atlas_rej_qcd" + ".pdf", format='pdf', transparent=True)
     plt.clf()
     plt.cla()
 

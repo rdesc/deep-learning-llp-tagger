@@ -1,0 +1,33 @@
+#!/bin/sh
+#PBS -N skeleton
+#PBS -l mem=4gb
+#PBS -l walltime=4:00:00
+#PBS -l procs=4
+#PBS -j oe
+#PBS -o /home/fcormier//calRatio/fullRun2/llp_NN/python/batch_logs
+#PBS -e /home/fcormier/calRatio/fullRun2/llp_NN/python/batch_logs
+#PBS -r n
+#PBS -V
+
+mydate(){
+    date +"%F_%H-%M-%S"
+}
+ 
+mkdir /tmp/${PBS_JOBID}
+cd /tmp/${PBS_JOBID}
+cp --parents $input1 .
+cp /home/fcormier/calRatio/fullRun2/llp_NN/python/gridSearch_train_keras.py .
+cp /home/fcormier/calRatio/fullRun2/llp_NN/python/evaluate_training.py .
+cp /home/fcormier/calRatio/fullRun2/llp_NN/python/setup.sh .
+source setup.sh
+echo "Current working directory is `pwd`" 
+echo "Starting run at: `date`"
+echo $input1
+echo "$mydate"
+mkdir -p keras_outputs/${input6}
+mkdir -p plots/${input6}
+/home/fcormier/miniconda3/envs/train_llp/bin/python gridSearch_train_keras.py $input1 $input2 $input3 $input4 $input5 $input6
+cp -r /tmp/${PBS_JOBID}/keras_outputs/${input6} ~/calRatio/fullRun2/llp_NN/python/keras_outputs/
+cp -r /tmp/${PBS_JOBID}/plots/${input6} ~/calRatio/fullRun2/llp_NN/python/plots/trainingDiagrams/
+/bin/rm -rf /tmp/${PBS_JOBID}
+
