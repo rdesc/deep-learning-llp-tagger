@@ -483,16 +483,20 @@ def process_signal_events(array, llp_mH, llp_mS):
     #print( array.apply(lambda x: ([((x['LLP_eta'] < 1.5 and i > 1200) or (x['LLP_eta'] > 1.5 and j > 3000) for i,j in zip(x['LLP_Lxy'],x['LLP_Lz'])])) , axis=1))
 
     #Find rows with LLPs with valid eta/decay radius/z combos
-    array['LLP_0_Lxy'] =  (array.LLP_Lxy.loc[array['LLP_eta'].apply(lambda x: abs(x[0])  ) < 1.4]).apply(lambda x: x[0] > 1200) 
-    array['LLP_0_Lz'] =  (array.LLP_Lz.loc[array['LLP_eta'].apply(lambda x: abs(x[0])  ) > 1.4]).apply(lambda x: x[0] > 3500) 
-    array['LLP_1_Lxy'] =  (array.LLP_Lxy.loc[array['LLP_eta'].apply(lambda x: abs(x[1])  ) < 1.4]).apply(lambda x: x[1] > 1200) 
-    array['LLP_1_Lz'] =  (array.LLP_Lz.loc[array['LLP_eta'].apply(lambda x: abs(x[1])  ) > 1.4]).apply(lambda x: x[1] > 3500) 
+    array['LLP_0_Lxy'] =  (array.LLP_Lxy.loc[array['LLP_eta'].apply(lambda x: abs(x[0])  ) < 1.4]).apply(lambda x: x[0] > 1500) 
+    array['LLP_0_Lxy_end'] =  (array.LLP_Lxy.loc[array['LLP_eta'].apply(lambda x: abs(x[0])  ) < 1.4]).apply(lambda x: x[0] < 4000) 
+    array['LLP_0_Lz'] =  (array.LLP_Lz.loc[array['LLP_eta'].apply(lambda x: abs(x[0])  ) > 1.4]).apply(lambda x: abs(x[0]) > 3000) 
+    array['LLP_0_Lz_end'] =  (array.LLP_Lz.loc[array['LLP_eta'].apply(lambda x: abs(x[0])  ) > 1.4]).apply(lambda x: abs(x[0]) < 6000) 
+    array['LLP_1_Lxy'] =  (array.LLP_Lxy.loc[array['LLP_eta'].apply(lambda x: abs(x[1])  ) < 1.4]).apply(lambda x: x[1] > 1500) 
+    array['LLP_1_Lxy_end'] =  (array.LLP_Lxy.loc[array['LLP_eta'].apply(lambda x: abs(x[1])  ) < 1.4]).apply(lambda x: x[1] < 4000) 
+    array['LLP_1_Lz'] =  (array.LLP_Lz.loc[array['LLP_eta'].apply(lambda x: abs(x[1])  ) > 1.4]).apply(lambda x: abs(x[1]) > 3000) 
+    array['LLP_1_Lz_end'] =  (array.LLP_Lz.loc[array['LLP_eta'].apply(lambda x: abs(x[1])  ) > 1.4]).apply(lambda x: abs(x[1]) < 6000) 
 
     #print(array.test_0.loc[array.LLP_0_Lxy | array.LLP_0_Lz])
     #print(array.test_1.loc[array.LLP_1_Lxy | array.LLP_1_Lz])
 
-    array_0 = array.loc[ (array.LLP_0_Lxy | array.LLP_0_Lz) & (~np.isnan(array.test_0))].copy()
-    array_1 = array.loc[ (array.LLP_1_Lxy | array.LLP_1_Lz) & (~np.isnan(array.test_1))].copy()
+    array_0 = array.loc[ ( (array.LLP_0_Lxy & array.LLP_0_Lxy_end) | (array.LLP_0_Lz & array.LLP_0_Lz_end)) & (~np.isnan(array.test_0))].copy()
+    array_1 = array.loc[ ( (array.LLP_1_Lxy & array.LLP_1_Lxy_end) | (array.LLP_1_Lz & array.LLP_1_Lz_end) ) & (~np.isnan(array.test_1))].copy()
 
     #print(array_0)
 
@@ -557,7 +561,7 @@ def process_signal_events(array, llp_mH, llp_mS):
     num_max_muonSegs = 70
 
     size_0 = array_0.shape[0] + array_1.shape[0]
-    size_1 = (num_cluster_variables*num_max_constits) + (num_track_variables*num_max_tracks) + (num_muon_variables*num_max_muonSegs) + 14
+    size_1 = (num_cluster_variables*num_max_constits) + (num_track_variables*num_max_tracks) + (num_muon_variables*num_max_muonSegs) + 16
     x_data = np.full([size_0,size_1],np.nan, dtype='float32')
     
 
@@ -603,12 +607,18 @@ def process_signal_events(array, llp_mH, llp_mS):
     x_data[0:array_0.shape[0],13] = np.ones(array_0.shape[0])*llp_mS
     x_data[array_0.shape[0]:array_0.shape[0]+array_1.shape[0],13] = np.ones(array_1.shape[0])*llp_mS
 
+    x_data[0:array_0.shape[0],14] = np.array([*array_0['eventNumber'].to_numpy()])
+    x_data[array_0.shape[0]:array_0.shape[0]+array_1.shape[0],14] = np.array([*array_1['eventNumber'].to_numpy()])
+
+    x_data[0:array_0.shape[0],15] = np.array([*array_0['runNumber'].to_numpy()])
+    x_data[array_0.shape[0]:array_0.shape[0]+array_1.shape[0],15] = np.array([*array_1['runNumber'].to_numpy()])
+
     clus_sort_index_0 = np.zeros(num_max_constits)
     track_sort_index_0 = np.zeros(num_max_constits)
     clus_sort_index_1 = np.zeros(num_max_tracks)
     track_sort_index_1 = np.zeros(num_max_tracks)
     #print(array_0.clus_pt.apply(lambda x: len(x)))
-    counter_cluster=14
+    counter_cluster=16
     for item in (array_0.loc[:,'clus_pt':'clusTime']).columns.values:
         array_0[item] = (array_0.apply(lambda x: x[item][x['cluster_jetIndex'] == int(x['test_0'])], axis=1))
         #SORRY ABOUT THIS IT IS BAD CODE
@@ -702,7 +712,7 @@ def process_signal_events(array, llp_mH, llp_mS):
     #print( (array_0.loc[:,'clus_pt':'clusTime']).columns.values + (array_0.loc[:,'nn_track_pt':'nn_track_SCTHits']).columns.values + (array_0.loc[:,'nn_MSeg_etaPos':'nn_MSeg_t0']).columns.values ) 
     #print( (array_0.loc[:,'clus_pt':'clusTime']).columns.values)
 
-    initial_names = ['label','mcEventWeight','flatWeight','jet_pt','jet_eta','jet_phi','jet_isClean_LooseBadLLP','aux_llp_Lxy','aux_llp_Lz','aux_llp_pt','aux_llp_eta','aux_llp_phi','llp_mH','llp_mS']
+    initial_names = ['label','mcEventWeight','flatWeight','jet_pt','jet_eta','jet_phi','jet_isClean_LooseBadLLP','aux_llp_Lxy','aux_llp_Lz','aux_llp_pt','aux_llp_eta','aux_llp_phi','llp_mH','llp_mS', 'eventNumber', 'runNumber']
 
     constit_cols = ((array_0.loc[:,'clus_pt':'clusTime']).columns.values)
     constit_names = []
@@ -757,7 +767,7 @@ if __name__ == '__main__':
 
     var_list_QCD = ["HLT_jet_TAU60","HLT_jet_TAU100","HLT_jet_LLPNM","HLT_jet_LLPRO","HLT_jet_isBIB","HLT_jet_eta","HLT_jet_phi","mcEventWeight","signal","QCD","BIB","jzN","jet_pt", "jet_eta", "jet_phi", "jet_isClean_LooseBadLLP", "jet_E", "jet_index","cluster_jetIndex","clus_pt","clus_eta","clus_phi","e_PreSamplerB","e_EMB1","e_EMB2","e_EMB3","e_PreSamplerE","e_EME1","e_EME2","e_EME3","e_HEC0","e_HEC1","e_HEC2","e_HEC3","e_TileBar0","e_TileBar1","e_TileBar2","e_TileGap1","e_TileGap2","e_TileGap3","e_TileExt0","e_TileExt1","e_TileExt2","e_FCAL0","e_FCAL1","e_FCAL2","clusTime","nn_track_jetIndex","nn_track_pt","nn_track_eta","nn_track_phi","nn_track_d0","nn_track_z0","nn_track_PixelShared","nn_track_PixelSplit","nn_track_SCTShared","nn_track_PixelHoles","nn_track_SCTHoles","nn_track_PixelHits","nn_track_SCTHits","nn_MSeg_etaPos","nn_MSeg_phiPos","nn_MSeg_etaDir","nn_MSeg_phiDir","nn_MSeg_t0","nn_MSeg_jetIndex"]
 
-    var_list_MC = ["HLT_jet_TAU60","HLT_jet_TAU100","HLT_jet_LLPNM","HLT_jet_LLPRO","HLT_jet_isBIB","HLT_jet_eta","HLT_jet_phi","mcEventWeight","LLP_pt","LLP_eta","LLP_phi","LLP_Lxy","LLP_Lz","signal","QCD","BIB","jzN","jet_pt", "jet_eta", "jet_phi", "jet_isClean_LooseBadLLP", "jet_E", "jet_index","cluster_jetIndex","clus_pt","clus_eta","clus_phi","e_PreSamplerB","e_EMB1","e_EMB2","e_EMB3","e_PreSamplerE","e_EME1","e_EME2","e_EME3","e_HEC0","e_HEC1","e_HEC2","e_HEC3","e_TileBar0","e_TileBar1","e_TileBar2","e_TileGap1","e_TileGap2","e_TileGap3","e_TileExt0","e_TileExt1","e_TileExt2","e_FCAL0","e_FCAL1","e_FCAL2","clusTime","nn_track_jetIndex","nn_track_pt","nn_track_eta","nn_track_phi","nn_track_d0","nn_track_z0","nn_track_PixelShared","nn_track_PixelSplit","nn_track_SCTShared","nn_track_PixelHoles","nn_track_SCTHoles","nn_track_PixelHits","nn_track_SCTHits","nn_MSeg_etaPos","nn_MSeg_phiPos","nn_MSeg_etaDir","nn_MSeg_phiDir","nn_MSeg_t0","nn_MSeg_jetIndex"]
+    var_list_MC = ["HLT_jet_TAU60","HLT_jet_TAU100","HLT_jet_LLPNM","HLT_jet_LLPRO","HLT_jet_isBIB","HLT_jet_eta","HLT_jet_phi","mcEventWeight","LLP_pt","LLP_eta","LLP_phi","LLP_Lxy","LLP_Lz","signal","QCD","BIB","jzN","jet_pt", "jet_eta", "jet_phi", "jet_isClean_LooseBadLLP", "jet_E", "jet_index","cluster_jetIndex","clus_pt","clus_eta","clus_phi","e_PreSamplerB","e_EMB1","e_EMB2","e_EMB3","e_PreSamplerE","e_EME1","e_EME2","e_EME3","e_HEC0","e_HEC1","e_HEC2","e_HEC3","e_TileBar0","e_TileBar1","e_TileBar2","e_TileGap1","e_TileGap2","e_TileGap3","e_TileExt0","e_TileExt1","e_TileExt2","e_FCAL0","e_FCAL1","e_FCAL2","clusTime","nn_track_jetIndex","nn_track_pt","nn_track_eta","nn_track_phi","nn_track_d0","nn_track_z0","nn_track_PixelShared","nn_track_PixelSplit","nn_track_SCTShared","nn_track_PixelHoles","nn_track_SCTHoles","nn_track_PixelHits","nn_track_SCTHits","nn_MSeg_etaPos","nn_MSeg_phiPos","nn_MSeg_etaDir","nn_MSeg_phiDir","nn_MSeg_t0","nn_MSeg_jetIndex", "eventNumber", "runNumber"]
 
     var_list_data = ["HLT_jet_TAU60","HLT_jet_TAU100","HLT_jet_LLPNM","HLT_jet_LLPRO","HLT_jet_isBIB","HLT_jet_eta","HLT_jet_phi","HLT_jet_eta","HLT_jet_phi","signal","QCD","BIB","jzN","jet_pt", "jet_eta", "jet_phi", "jet_isClean_LooseBadLLP", "jet_E", "jet_index","cluster_jetIndex","clus_pt","clus_eta","clus_phi","e_PreSamplerB","e_EMB1","e_EMB2","e_EMB3","e_PreSamplerE","e_EME1","e_EME2","e_EME3","e_HEC0","e_HEC1","e_HEC2","e_HEC3","e_TileBar0","e_TileBar1","e_TileBar2","e_TileGap1","e_TileGap2","e_TileGap3","e_TileExt0","e_TileExt1","e_TileExt2","e_FCAL0","e_FCAL1","e_FCAL2","clusTime","nn_track_jetIndex","nn_track_pt","nn_track_eta","nn_track_phi","nn_track_d0","nn_track_z0","nn_track_PixelShared","nn_track_PixelSplit","nn_track_SCTShared","nn_track_PixelHoles","nn_track_SCTHoles","nn_track_PixelHits","nn_track_SCTHits","nn_MSeg_etaPos","nn_MSeg_phiPos","nn_MSeg_etaDir","nn_MSeg_phiDir","nn_MSeg_t0","nn_MSeg_jetIndex"]
 

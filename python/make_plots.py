@@ -1,16 +1,10 @@
 import numpy as np
 import seaborn as sns
-from column_definition import *
 
 import pandas as pd
 
-import uproot
-
-import concurrent.futures
-import multiprocessing
 
 import itertools
-from itertools import cycle
 
 import sys
 
@@ -25,412 +19,102 @@ import matplotlib.colors as mcolors
 def remove_values_from_list(the_list, val):
    return [value for value in the_list if value != val]
 
-def plot_three_histos(signal,qcd,bib,name,xmin,xmax,bins, prefix):
-    fig,ax = plt.subplots()
-    ax.hist(signal, range=(xmin,xmax),  density=True, color='red',alpha=0.5,linewidth=0, histtype='stepfilled',bins=bins,label="Signal")
-    ax.hist(qcd, range=(xmin,xmax), density=True, color='blue',alpha=0.5, linewidth=0,histtype='stepfilled',bins=bins,label="QCD")
-    ax.hist(bib, range=(xmin,xmax), density=True, color='green',alpha=0.5, linewidth=0,histtype='stepfilled',bins=bins,label="BIB")
-    ax.set_xlabel(name)
-    ax.set_ylabel("Arb. Units")
-    if "jet_pt" in name or "hcal" in name or "ecal" in name:
-        ax.set_yscale('log', nonposy='clip')
-    ax.legend()
-
-    textstr = prefix 
-
-    #matplotlib.patch.Patch properties
-    props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
-    
-    # place a text box in upper left in axes coords
-    ax.text(0.05, 0.8, textstr, color='black', transform=ax.transAxes, 
-        bbox=dict(facecolor='none', edgecolor='black', boxstyle='round,pad=1'))
-
-
-    plt.savefig("plots/" + name+ prefix +".png", format='png', transparent=False)
+def plot_three_histos(signal,s_weights,qcd,qcd_weights,bib,bib_weights,name,xmin,xmax,bins):
+    plt.hist(signal, weights = s_weights, range=(xmin,xmax),   color='red',alpha=0.5,linewidth=0, histtype='stepfilled',bins=bins,label="Signal")
+    plt.hist(qcd, weights = qcd_weights, range=(xmin,xmax),  color='blue',alpha=0.5, linewidth=0,histtype='stepfilled',bins=bins,label="QCD")
+    plt.hist(bib, weights = bib_weights, range=(xmin,xmax),  color='green',alpha=0.5, linewidth=0,histtype='stepfilled',bins=bins,label="BIB")
+    plt.xlabel(name)
+    plt.legend()
+    plt.savefig("plots/" + name+ "_flat.png", format='png', transparent=False)
     plt.clf()
     plt.close()
 
-def plot_three_histos_withCut(signal,qcd,bib,name,xmin,xmax,bins, prefix, cut_variable, cut_direction, cut_value):
-    fig,ax = plt.subplots()
-    ax.hist(signal, range=(xmin,xmax),  density=True, color='red',alpha=0.5,linewidth=0, histtype='stepfilled',bins=bins,label="Signal")
-    ax.hist(qcd, range=(xmin,xmax), density=True, color='blue',alpha=0.5, linewidth=0,histtype='stepfilled',bins=bins,label="QCD")
-    ax.hist(bib, range=(xmin,xmax), density=True, color='green',alpha=0.5, linewidth=0,histtype='stepfilled',bins=bins,label="BIB")
-    ax.set_xlabel(name)
-    ax.legend()
-    textstr = cut_variable + " " + cut_direction + " " + str(cut_value) 
 
-    #matplotlib.patch.Patch properties
-    props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
-    
-    # place a text box in upper left in axes coords
-    ax.text(0.05, 0.8, textstr, color='black', transform=ax.transAxes, 
-        bbox=dict(facecolor='none', edgecolor='black', boxstyle='round,pad=1'))
-
-    plt.savefig("plots/cutDiagrams/" + name+ prefix + "_" + str(cut_variable) + cut_direction + str(cut_value) +".png", format='png', transparent=False)
-    plt.clf()
-    plt.close()
-
-def plot_constit(x_constit,y_constit,z_constit,name, prefix):
-
-
-    #print(x_constit.shape)
-    #print(y_constit.shape)
-    cmap_sig = sns.cubehelix_palette(rot=-.4,dark=0, light=1,as_cmap=True) #green
-
-    range_phi = 3.14
-    range_eta = 1.4
-    if "process" in prefix:
-        range_phi = 1
-        range_eta = 1
-
-    plt.figure()
-    plt.hist2d(x_constit, y_constit,
-               bins=[20, 20],
-               range=[[-range_eta, range_eta], [-range_phi, range_phi]],
-               #range = [[-math.pi,math.pi],[-math.pi,math.pi]],
-               norm=LogNorm(),
-               #weights=z_constit,
-               cmap = cmap_sig)
-    cbar = plt.colorbar()
-    #cbar.ax.set_ylabel(r'Jet p$_\mathrm{T}$ per pixel [GeV]')
-    cbar.ax.set_ylabel(r'Normalized # clusters')
-    plt.xlabel("Pseudorapidity $\eta$")
-    plt.ylabel("Azimuthal angle $\phi$")
-
-    plt.savefig("plots/" + name + prefix +".png", format='png', transparent=False)
-    plt.clf()
-    plt.close()
-
-def plot_2d_histos(signal_x, qcd_x, bib_x, name_x, xmin, xmax, x_bins,  signal_y, qcd_y, bib_y, name_y, ymin, ymax, y_bins, prefix): 
-    cmap_sig = sns.cubehelix_palette(rot=-.4,dark=0, light=1,as_cmap=True)
-
-    print(signal_x)
-    print(signal_y)
-
-    plt.figure()
-    plt.hist2d(signal_x, signal_y, bins=[x_bins, y_bins], range=[[xmin,xmax],[ymin,ymax]], norm = LogNorm(), cmap = cmap_sig)  
-
-    cbar = plt.colorbar()
-    cbar.ax.set_ylabel(r'# Signal')
-    plt.xlabel(name_x)
-    plt.ylabel(name_y)
-
-    plt.savefig("plots/2Dplots/signal_" + name_x + "_2D_" +  name_y + prefix +".png", format='png', transparent=False)
-    plt.clf()
-    plt.close()
-
-    plt.figure()
-    plt.hist2d(qcd_x, qcd_y, bins=[x_bins, y_bins], range=[[xmin,xmax],[ymin,ymax]], norm = LogNorm(), cmap = cmap_sig)  
-    cbar = plt.colorbar()
-    cbar.ax.set_ylabel(r'# QCD')
-    plt.xlabel(name_x)
-    plt.ylabel(name_y)
-
-    plt.savefig("plots/2Dplots/qcd_" + name_x + "_2D_" +  name_y + prefix +".png", format='png', transparent=False)
-    plt.clf()
-    plt.close()
-
-    plt.figure()
-    plt.hist2d(bib_x, bib_y, bins=[x_bins, y_bins], range=[[xmin,xmax],[ymin,ymax]], norm = LogNorm(), cmap = cmap_sig)  
-    cbar = plt.colorbar()
-    cbar.ax.set_ylabel(r'# BIB')
-    plt.xlabel(name_x)
-    plt.ylabel(name_y)
-
-    plt.savefig("plots/2Dplots/bib_" + name_x + "_2D_" +  name_y + prefix +".png", format='png', transparent=False)
-    plt.clf()
-    plt.close()
-
-def do_plotting_2D(signal,qcd,bib,name_x,xmin,xmax,x_bins, name_y, ymin,ymax,y_bins, prefix):
-
-    filter_nn_x = [col for col in signal if col.startswith(name_x)]
-    filter_nn_y = [col for col in signal if col.startswith(name_y)]
-
-    #signal_x = remove_values_from_list(signal[filter_nn_x].values.flatten(),np.nan)
-    #qcd_x = remove_values_from_list(qcd[filter_nn_x].values.flatten(),np.nan)
-    #bib_x = remove_values_from_list(bib[filter_nn_x].values.flatten(),np.nan)
-
-    #signal_y = remove_values_from_list(signal[filter_nn_y].values.flatten(),np.nan)
-    #qcd_y = remove_values_from_list(qcd[filter_nn_y].values.flatten(),np.nan)
-    #bib_y = remove_values_from_list(bib[filter_nn_y].values.flatten(),np.nan)
-
-    signal_x = signal[filter_nn_x].dropna()
-    qcd_x = qcd[filter_nn_x].dropna()
-    bib_x = bib[filter_nn_x].dropna()
-
-    signal_y = signal[filter_nn_y].dropna()
-    qcd_y = qcd[filter_nn_y].dropna()
-    bib_y = bib[filter_nn_y].dropna()
-
-    if ( (len(signal_x)==len(signal_y)) and (len(qcd_x)==len(qcd_y)) and (len(bib_x)==len(bib_y)) ):
-        plot_2d_histos(np.asarray(signal_x.values.flatten()), np.asarray(qcd_x.values.flatten()), np.asarray(bib_x.values.flatten()), name_x, xmin, xmax, x_bins,  np.asarray(signal_y.values.flatten()), np.asarray(qcd_y.values.flatten()), np.asarray(bib_y.values.flatten()), name_y, ymin, ymax, y_bins, prefix) 
-
-
-
-def do_plotting(signal,qcd,bib,name,xmin,xmax,bins, prefix):
-
+def do_plotting(signal,qcd,bib,name,xmin,xmax,bins):
     filter_nn_MSeg = [col for col in signal if col.startswith(name)]
-
-    #signal_MSeg = remove_values_from_list(signal[filter_nn_MSeg].values.flatten(),np.nan)
-    #qcd_MSeg = remove_values_from_list(qcd[filter_nn_MSeg].values.flatten(),np.nan)
-    #bib_MSeg = remove_values_from_list(bib[filter_nn_MSeg].values.flatten(),np.nan)
-
-    signal_MSeg = signal[filter_nn_MSeg].dropna()
-    qcd_MSeg = qcd[filter_nn_MSeg].dropna()
-    bib_MSeg = bib[filter_nn_MSeg].dropna()
-
-
-    plot_three_histos(signal_MSeg.values.flatten(),qcd_MSeg.values.flatten(),bib_MSeg.values.flatten(),name,xmin,xmax,bins, prefix)
-
-def do_plotting_withCut(signal,qcd,bib,name,xmin,xmax,bins, prefix, cutVariable, cutValue):
-
-    filter_nn_MSeg = [col for col in signal if col.startswith(name)]
-    filter_nn_cut = [col for col in signal if col.startswith(cutVariable)]
-
-    signal_list_below_cut = []
-    qcd_list_below_cut = []
-    bib_list_below_cut = []
-    signal_list_above_cut = []
-    qcd_list_above_cut = []
-    bib_list_above_cut = []
-
-    if ( len(filter_nn_MSeg)==len(filter_nn_cut) ):
-	    for (original, cutVar)  in zip(filter_nn_MSeg,filter_nn_cut):
-                signal_list_below_cut.append( remove_values_from_list((signal[original])[(signal[cutVar] < cutValue) & (signal[cutVar] > -cutValue)].values.flatten(),np.nan) )
-                qcd_list_below_cut.append( remove_values_from_list((qcd[original])[(qcd[cutVar] < cutValue) & (qcd[cutVar] > -cutValue)].values.flatten(),np.nan) )
-                bib_list_below_cut.append( remove_values_from_list((bib[original])[(bib[cutVar] < cutValue)  & (bib[cutVar] > -cutValue)].values.flatten(),np.nan) )
-                signal_list_above_cut.append( remove_values_from_list((signal[original])[(signal[cutVar] > cutValue) | (signal[cutVar] < -cutValue)].values.flatten(),np.nan) )
-                qcd_list_above_cut.append( remove_values_from_list((qcd[original])[(qcd[cutVar] > cutValue) | (qcd[cutVar] < -cutValue)].values.flatten(),np.nan) )
-                bib_list_above_cut.append( remove_values_from_list((bib[original])[(bib[cutVar] > cutValue) | (bib[cutVar] < -cutValue)].values.flatten(),np.nan) )
-                '''
-                signal_list_below_cut.append(((signal[original])[(signal[cutVar] < cutValue) & (signal[cutVar] > -cutValue)].dropna()).values.flatten())
-                qcd_list_below_cut.append(((qcd[original])[(qcd[cutVar] < cutValue) & (qcd[cutVar] > -cutValue)].dropna()).values.flatten())
-                bib_list_below_cut.append(((bib[original].dropna())[(bib[cutVar] < cutValue) & (bib[cutVar] > -cutValue)].dropna()).values.flatten())
-
-                signal_list_above_cut.append(((signal[original].dropna())[(signal[cutVar] > cutValue) & (signal[cutVar] < -cutValue)].dropna()).values.flatten())
-                qcd_list_above_cut.append(((qcd[original].dropna())[(qcd[cutVar] > cutValue) & (qcd[cutVar] < -cutValue)].dropna()).values.flatten())
-                bib_list_above_cut.append(((bib[original].dropna())[(bib[cutVar] > cutValue) & (bib[cutVar] < -cutValue)].dropna()).values.flatten())
-                '''
-
-
-    elif ( len(filter_nn_MSeg)>len(filter_nn_cut) ):
-	    for (original, cutVar)  in zip(filter_nn_MSeg,cycle(filter_nn_cut)):
-                signal_list_below_cut.append( remove_values_from_list((signal[original])[(signal[cutVar] < cutValue) & (signal[cutVar] > -cutValue)].values.flatten(),np.nan) )
-                qcd_list_below_cut.append( remove_values_from_list((qcd[original])[(qcd[cutVar] < cutValue) & (qcd[cutVar] > -cutValue)].values.flatten(),np.nan) )
-                bib_list_below_cut.append( remove_values_from_list((bib[original])[(bib[cutVar] < cutValue)  & (bib[cutVar] > -cutValue)].values.flatten(),np.nan) )
-                signal_list_above_cut.append( remove_values_from_list((signal[original])[(signal[cutVar] > cutValue) | (signal[cutVar] < -cutValue)].values.flatten(),np.nan) )
-                qcd_list_above_cut.append( remove_values_from_list((qcd[original])[(qcd[cutVar] > cutValue) | (qcd[cutVar] < -cutValue)].values.flatten(),np.nan) )
-                bib_list_above_cut.append( remove_values_from_list((bib[original])[(bib[cutVar] > cutValue) | (bib[cutVar] < -cutValue)].values.flatten(),np.nan) )
-                '''
-                signal_list_below_cut.append(((signal[original])[(signal[cutVar] < cutValue) & (signal[cutVar] > -cutValue)].dropna()).values.flatten())
-                qcd_list_below_cut.append(((qcd[original])[(qcd[cutVar] < cutValue) & (qcd[cutVar] > -cutValue)].dropna()).values.flatten())
-                bib_list_below_cut.append(((bib[original].dropna())[(bib[cutVar] < cutValue) & (bib[cutVar] > -cutValue)].dropna()).values.flatten())
-
-                signal_list_above_cut.append(((signal[original].dropna())[(signal[cutVar] > cutValue) & (signal[cutVar] < -cutValue)].dropna()).values.flatten())
-                qcd_list_above_cut.append(((qcd[original].dropna())[(qcd[cutVar] > cutValue) & (qcd[cutVar] < -cutValue)].dropna()).values.flatten())
-                bib_list_above_cut.append(((bib[original].dropna())[(bib[cutVar] > cutValue) & (bib[cutVar] < -cutValue)].dropna()).values.flatten())
-                '''
-    else:
-	    for (original, cutVar)  in zip(cycle(filter_nn_MSeg),filter_nn_cut):
-                signal_list_below_cut.append( remove_values_from_list((signal[original])[(signal[cutVar] < cutValue) & (signal[cutVar] > -cutValue)].values.flatten(),np.nan) )
-                qcd_list_below_cut.append( remove_values_from_list((qcd[original])[(qcd[cutVar] < cutValue) & (qcd[cutVar] > -cutValue)].values.flatten(),np.nan) )
-                bib_list_below_cut.append( remove_values_from_list((bib[original])[(bib[cutVar] < cutValue)  & (bib[cutVar] > -cutValue)].values.flatten(),np.nan) )
-                signal_list_above_cut.append( remove_values_from_list((signal[original])[(signal[cutVar] > cutValue) | (signal[cutVar] < -cutValue)].values.flatten(),np.nan) )
-                qcd_list_above_cut.append( remove_values_from_list((qcd[original])[(qcd[cutVar] > cutValue) | (qcd[cutVar] < -cutValue)].values.flatten(),np.nan) )
-                bib_list_above_cut.append( remove_values_from_list((bib[original])[(bib[cutVar] > cutValue) | (bib[cutVar] < -cutValue)].values.flatten(),np.nan) )
-                '''
-                signal_list_below_cut.append(((signal[original])[(signal[cutVar] < cutValue) & (signal[cutVar] > -cutValue)].dropna()).values.flatten())
-                qcd_list_below_cut.append(((qcd[original])[(qcd[cutVar] < cutValue) & (qcd[cutVar] > -cutValue)].dropna()).values.flatten())
-                bib_list_below_cut.append(((bib[original].dropna())[(bib[cutVar] < cutValue) & (bib[cutVar] > -cutValue)].dropna()).values.flatten())
-
-                signal_list_above_cut.append(((signal[original].dropna())[(signal[cutVar] > cutValue) & (signal[cutVar] < -cutValue)].dropna()).values.flatten())
-                qcd_list_above_cut.append(((qcd[original].dropna())[(qcd[cutVar] > cutValue) & (qcd[cutVar] < -cutValue)].dropna()).values.flatten())
-                bib_list_above_cut.append(((bib[original].dropna())[(bib[cutVar] > cutValue) & (bib[cutVar] < -cutValue)].dropna()).values.flatten())
-                '''
-
-        
-    '''
-    above_cut_signal = signal[signal[cutVariable] > cutValue]
-    above_cut_qcd = qcd[qcd[cutVariable] > cutValue]
-    above_cut_bib = bib[bib[cutVariable] > cutValue]
-
-    below_cut_signal = signal[signal[cutVariable] < cutValue]
-    below_cut_qcd = qcd[qcd[cutVariable] < cutValue]
-    below_cut_bib = bib[bib[cutVariable] < cutValue]
 
     signal_MSeg = remove_values_from_list(signal[filter_nn_MSeg].values.flatten(),np.nan)
+    signal_weights = remove_values_from_list(signal["flatWeight"].values.flatten(),np.nan)
     qcd_MSeg = remove_values_from_list(qcd[filter_nn_MSeg].values.flatten(),np.nan)
+    qcd_weights = remove_values_from_list(qcd["flatWeight"].values.flatten(),np.nan)
     bib_MSeg = remove_values_from_list(bib[filter_nn_MSeg].values.flatten(),np.nan)
-    '''
-
-    signal_list_below_cut = np.concatenate([np.array(i) for i in signal_list_below_cut])
-    qcd_list_below_cut = np.concatenate([np.array(i) for i in qcd_list_below_cut])
-    bib_list_below_cut = np.concatenate([np.array(i) for i in bib_list_below_cut])
-
-    signal_list_above_cut = np.concatenate([np.array(i) for i in signal_list_above_cut])
-    qcd_list_above_cut = np.concatenate([np.array(i) for i in qcd_list_above_cut])
-    bib_list_above_cut = np.concatenate([np.array(i) for i in bib_list_above_cut])
-
-    plot_three_histos_withCut(np.ravel(signal_list_below_cut).flatten(),np.ravel(qcd_list_below_cut).flatten(),np.ravel(bib_list_below_cut).flatten(),name,xmin,xmax,bins, prefix, cutVariable, "<", cutValue)
-    plot_three_histos_withCut(np.ravel(signal_list_above_cut).flatten(),np.ravel(qcd_list_above_cut).flatten(),np.ravel(bib_list_above_cut).flatten(),name,xmin,xmax,bins, prefix, cutVariable, ">", cutValue)
-
-def do_truth_plotting(signal,truth_dist,truth_xmin,truth_xmax,truth_bins,prefix):
-    for name,xmin,xmax,bins in zip(truth_dist,truth_xmin,truth_xmax,truth_bins):
-        plt.hist(signal[name], range=(xmin,xmax),  density=True, color='red',alpha=0.5,linewidth=0, histtype='stepfilled',bins=bins,label="Signal")
-        plt.xlabel(name)
-        plt.legend()
-        plt.savefig("plots/" + name+ prefix +".png", format='png', transparent=False)
-        plt.clf()
-    plt.close()
+    bib_weights = remove_values_from_list(bib["flatWeight"].values.flatten(),np.nan)
 
 
-def plot_vars(data, prefix=""):
-
-    signal = data[data.label == 1]
-    print(signal.shape[0])
-    qcd = data[data.label == 0]
-    print(qcd.shape[0])
-    bib = data[data.label == 2]
-    print(bib.shape[0])
-
-    print("Preparing plotting script")
-
-    if "cleanJets" in prefix:
-        signal = signal[signal.jet_isClean_LooseBadLLP == 1]
-        qcd = qcd[qcd.jet_isClean_LooseBadLLP == 1]
-        bib = bib[bib.jet_isClean_LooseBadLLP == 1]
+    plot_three_histos(signal_MSeg,signal_weights,qcd_MSeg,qcd_weights,bib_MSeg,bib_weights,name,xmin,xmax,bins)
 
 
-    #TODO: BE SMARTER ABOUT THIS!!!!!!
 
-    clusPt_loc = signal.columns.get_loc('clus_pt_0')
-    clusEta_loc = signal.columns.get_loc('clus_eta_0')
-    clusPhi_loc = signal.columns.get_loc('clus_phi_0')
-    print(clusPt_loc)
-    signal_clus_pt = signal.iloc[:,slice(clusPt_loc,clusPt_loc+28*20,28)]
-    qcd_clus_pt = qcd.iloc[:,slice(clusPt_loc,clusPt_loc+28*20,35)]
-    bib_clus_pt = bib.iloc[:,slice(clusPt_loc,clusPt_loc+28*20,35)]
-
-    signal_clus_eta = signal.iloc[:,slice(clusEta_loc,clusEta_loc+28*20,28)]
-    qcd_clus_eta = qcd.iloc[:,slice(clusEta_loc,clusEta_loc+28*20,28)]
-    bib_clus_eta = bib.iloc[:,slice(clusEta_loc,clusEta_loc+28*20,28)]
-
-    signal_clus_phi = signal.iloc[:,slice(clusPhi_loc,clusPhi_loc+28*20,28)]
-    qcd_clus_phi = qcd.iloc[:,slice(clusPhi_loc,clusPhi_loc+28*20,28)]
-    bib_clus_phi = bib.iloc[:,slice(clusPhi_loc,clusPhi_loc+28*20,28)]
-
-    if "processing" in prefix:
-        signal_clus_pt = signal.iloc[:,slice(clusPt_loc,clusPt_loc+4*20,4)]
-        qcd_clus_pt = qcd.iloc[:,slice(clusPt_loc,clusPt_loc+4*20,35)]
-        bib_clus_pt = bib.iloc[:,slice(clusPt_loc,clusPt_loc+4*20,35)]
-
-        signal_clus_eta = signal.iloc[:,slice(clusEta_loc,clusEta_loc+4*20,4)]
-        qcd_clus_eta = qcd.iloc[:,slice(clusEta_loc,clusEta_loc+4*20,4)]
-        bib_clus_eta = bib.iloc[:,slice(clusEta_loc,clusEta_loc+4*20,4)]
-
-        signal_clus_phi = signal.iloc[:,slice(clusPhi_loc,clusPhi_loc+4*20,4)]
-        qcd_clus_phi = qcd.iloc[:,slice(clusPhi_loc,clusPhi_loc+4*20,4)]
-        bib_clus_phi = bib.iloc[:,slice(clusPhi_loc,clusPhi_loc+4*20,4)]
-
-    #jet_eta studies
-
-    signal_all_clus_pt = remove_values_from_list(signal_clus_pt.values.flatten(),np.nan)
-    qcd_all_clus_pt = remove_values_from_list(qcd_clus_pt.values.flatten(),np.nan)
-    bib_all_clus_pt = remove_values_from_list(bib_clus_pt.values.flatten(),np.nan)
-
-    signal_all_clus_eta = remove_values_from_list(signal_clus_eta.values.flatten(),np.nan)
-    qcd_all_clus_eta = remove_values_from_list(qcd_clus_eta.values.flatten(),np.nan)
-    bib_all_clus_eta = remove_values_from_list(bib_clus_eta.values.flatten(),np.nan)
-
-    signal_all_clus_phi = remove_values_from_list(signal_clus_phi.values.flatten(),np.nan)
-    qcd_all_clus_phi = remove_values_from_list(qcd_clus_phi.values.flatten(),np.nan)
-    bib_all_clus_phi = remove_values_from_list(bib_clus_phi.values.flatten(),np.nan)
-
-    print("Plotting Constits")
- 
-    plot_constit(signal_all_clus_eta,signal_all_clus_phi, signal_all_clus_pt, "signal_constits", prefix)
-    plot_constit(bib_all_clus_eta,bib_all_clus_phi, bib_all_clus_pt, "bib_constits", prefix)
-    plot_constit(qcd_all_clus_eta,qcd_all_clus_phi, qcd_all_clus_pt, "qcd_constits", prefix)
-
-    xmin_dict = {"jet_pt":0, "jet_eta":-2.5, "jet_phi":-3.14, "jet_isClean_LooseBadLLP":0, "jet_E":0, "clus_pt":0,"clus_eta":-2.5,"clus_phi":-3.14,"e_PreSamplerB":0,"e_EMB1":0,"e_EMB2":0,"e_EMB3":0,"e_PreSamplerE":0,"e_EME1":0,"e_EME2":0,"e_EME3":0,"e_HEC0":0,"e_HEC1":0,"e_HEC2":0,"e_HEC3":0,"e_TileBar0":0,"e_TileBar1":0,"e_TileBar2":0,"e_TileGap1":0,"e_TileGap2":0,"e_TileGap3":0,"e_TileExt0":0,"e_TileExt1":0,"e_TileExt2":0,"e_FCAL0":0,"e_FCAL1":0,"e_FCAL2":0,"clusTime":-10,"nn_track_pt":0,"nn_track_eta":-2.5,"nn_track_phi":-3.14,"nn_track_d0":0,"nn_track_z0":0,"nn_track_PixelShared":-1,"nn_track_PixelSplit":-1,"nn_track_SCTShared":-1,"nn_track_PixelHoles":-1,"nn_track_SCTHoles":-1,"nn_track_PixelHits":-1,"nn_track_SCTHits":-1,"nn_MSeg_etaPos":-4,"nn_MSeg_phiPos":-3.14,"nn_MSeg_etaDir":-8,"nn_MSeg_phiDir":-3.14,"nn_MSeg_t0":-10}
-
-    xmax_dict = {"jet_pt":300000, "jet_eta":2.5, "jet_phi":3.14, "jet_isClean_LooseBadLLP":2, "jet_E":200000, "clus_pt":60000,"clus_eta":2.5,"clus_phi":3.14,"e_PreSamplerB":2000,"e_EMB1":4000,"e_EMB2":6000,"e_EMB3":3000,"e_PreSamplerE":100,"e_EME1":300,"e_EME2":300,"e_EME3":300,"e_HEC0":100,"e_HEC1":100,"e_HEC2":100,"e_HEC3":100,"e_TileBar0":2000,"e_TileBar1":2000,"e_TileBar2":2000,"e_TileGap1":100,"e_TileGap2":100,"e_TileGap3":100,"e_TileExt0":100,"e_TileExt1":100,"e_TileExt2":100,"e_FCAL0":100,"e_FCAL1":100,"e_FCAL2":100,"clusTime":10,"nn_track_pt":10000,"nn_track_eta":2.5,"nn_track_phi":3.14,"nn_track_d0":4,"nn_track_z0":300,"nn_track_PixelShared":10,"nn_track_PixelSplit":10,"nn_track_SCTShared":10,"nn_track_PixelHoles":10,"nn_track_SCTHoles":10,"nn_track_PixelHits":10,"nn_track_SCTHits":10,"nn_MSeg_etaPos":4,"nn_MSeg_phiPos":3.14,"nn_MSeg_etaDir":8,"nn_MSeg_phiDir":3.14,"nn_MSeg_t0":10}
-
-    bin_dict = {"jet_pt":40, "jet_eta":20, "jet_phi":20, "jet_isClean_LooseBadLLP":2, "jet_E":40, "clus_pt":40,"clus_eta":20,"clus_phi":20,"e_PreSamplerB":20,"e_EMB1":20,"e_EMB2":20,"e_EMB3":20,"e_PreSamplerE":20,"e_EME1":20,"e_EME2":20,"e_EME3":20,"e_HEC0":20,"e_HEC1":20,"e_HEC2":20,"e_HEC3":20,"e_TileBar0":20,"e_TileBar1":20,"e_TileBar2":20,"e_TileGap1":20,"e_TileGap2":20,"e_TileGap3":20,"e_TileExt0":20,"e_TileExt1":20,"e_TileExt2":20,"e_FCAL0":20,"e_FCAL1":20,"e_FCAL2":20,"clusTime":20,"nn_track_pt":40,"nn_track_eta":20,"nn_track_phi":20,"nn_track_d0":30,"nn_track_z0":30,"nn_track_PixelShared":11,"nn_track_PixelSplit":11,"nn_track_SCTShared":11,"nn_track_PixelHoles":11,"nn_track_SCTHoles":11,"nn_track_PixelHits":11,"nn_track_SCTHits":11,"nn_MSeg_etaPos":20,"nn_MSeg_phiPos":20,"nn_MSeg_etaDir":20,"nn_MSeg_phiDir":20,"nn_MSeg_t0":20}
-
-    if "processing" in prefix:
-        xmin_dict = {"jet_pt":0, "jet_eta":-1, "jet_phi":-1, "jet_isClean_LooseBadLLP":0, "jet_E":0, "clus_pt":0,"clus_eta":-1,"clus_phi":-1,"e_PreSamplerB":0.05,"e_EMB1":0.05,"e_EMB2":0.05,"e_EMB3":0.05,"e_PreSamplerE":0.05,"e_EME1":0.05,"e_EME2":0.05,"e_EME3":0.05,"e_HEC0":0.05,"e_HEC1":0.05,"e_HEC2":0.05,"e_HEC3":0.05,"e_TileBar0":0.05,"e_TileBar1":0.05,"e_TileBar2":0.05,"e_TileGap1":0.05,"e_TileGap2":0.05,"e_TileGap3":0.05,"e_TileExt0":0.05,"e_TileExt1":0.05,"e_TileExt2":0.05,"e_FCAL0":0.05,"e_FCAL1":0.05,"e_FCAL2":0.05,"clusTime":-10,"nn_track_pt":0,"nn_track_eta":-1,"nn_track_phi":-1,"nn_track_d0":0,"nn_track_z0":0,"nn_track_PixelShared":-1,"nn_track_PixelSplit":-1,"nn_track_SCTShared":-1,"nn_track_PixelHoles":-1,"nn_track_SCTHoles":-1,"nn_track_PixelHits":-1,"nn_track_SCTHits":-1,"nn_MSeg_etaPos":-1,"nn_MSeg_phiPos":-1,"nn_MSeg_etaDir":-8,"nn_MSeg_phiDir":-1,"nn_MSeg_t0":-10,"l1_ecal":0,"l2_ecal":0,"l3_ecal":0,"l4_ecal":0,"l1_hcal":0,"l2_hcal":0,"l3_hcal":0,"l4_hcal":0}
-
-        xmax_dict = {"jet_pt":1, "jet_eta":1, "jet_phi":1, "jet_isClean_LooseBadLLP":2, "jet_E":1, "clus_pt":1,"clus_eta":1,"clus_phi":1,"e_PreSamplerB":1,"e_EMB1":1,"e_EMB2":1,"e_EMB3":1,"e_PreSamplerE":1,"e_EME1":1,"e_EME2":1,"e_EME3":1,"e_HEC0":1,"e_HEC1":1,"e_HEC2":1,"e_HEC3":1,"e_TileBar0":1,"e_TileBar1":1,"e_TileBar2":1,"e_TileGap1":1,"e_TileGap2":1,"e_TileGap3":1,"e_TileExt0":1,"e_TileExt1":1,"e_TileExt2":1,"e_FCAL0":1,"e_FCAL1":1,"e_FCAL2":1,"clusTime":11,"nn_track_pt":1,"nn_track_eta":1,"nn_track_phi":1,"nn_track_d0":4,"nn_track_z0":300,"nn_track_PixelShared":10,"nn_track_PixelSplit":10,"nn_track_SCTShared":10,"nn_track_PixelHoles":10,"nn_track_SCTHoles":10,"nn_track_PixelHits":10,"nn_track_SCTHits":10,"nn_MSeg_etaPos":1,"nn_MSeg_phiPos":1,"nn_MSeg_etaDir":8,"nn_MSeg_phiDir":1,"nn_MSeg_t0":10,"l1_ecal":1,"l2_ecal":1,"l3_ecal":1,"l4_ecal":1,"l1_hcal":1,"l2_hcal":1,"l3_hcal":1,"l4_hcal":1}
-
-        bin_dict = {"jet_pt":40, "jet_eta":20, "jet_phi":20, "jet_isClean_LooseBadLLP":2, "jet_E":40, "clus_pt":40,"clus_eta":20,"clus_phi":20,"e_PreSamplerB":20,"e_EMB1":20,"e_EMB2":20,"e_EMB3":20,"e_PreSamplerE":20,"e_EME1":20,"e_EME2":20,"e_EME3":20,"e_HEC0":20,"e_HEC1":20,"e_HEC2":20,"e_HEC3":20,"e_TileBar0":20,"e_TileBar1":20,"e_TileBar2":20,"e_TileGap1":20,"e_TileGap2":20,"e_TileGap3":20,"e_TileExt0":20,"e_TileExt1":20,"e_TileExt2":20,"e_FCAL0":20,"e_FCAL1":20,"e_FCAL2":20,"clusTime":20,"nn_track_pt":40,"nn_track_eta":20,"nn_track_phi":20,"nn_track_d0":30,"nn_track_z0":30,"nn_track_PixelShared":11,"nn_track_PixelSplit":11,"nn_track_SCTShared":11,"nn_track_PixelHoles":11,"nn_track_SCTHoles":11,"nn_track_PixelHits":11,"nn_track_SCTHits":11,"nn_MSeg_etaPos":20,"nn_MSeg_phiPos":20,"nn_MSeg_etaDir":20,"nn_MSeg_phiDir":20,"nn_MSeg_t0":20,"l1_ecal":20,"l2_ecal":20,"l3_ecal":20,"l4_ecal":20,"l1_hcal":20,"l2_hcal":20,"l3_hcal":20,"l4_hcal":20}
-
-    truth_dist = ["aux_llp_Lxy","aux_llp_Lz","aux_llp_pt","aux_llp_eta","aux_llp_phi"]
-    truth_xmin = [1000, 1000, 40, -2.5, -3.14]
-    truth_xmax = [4000, 5000, 300, 2.5, 3.14]
-    truth_bins = [20,20,20,20,20]
-   
-    print("Plotting 2D Plots")
-
-    do_plotting_2D(signal,qcd,bib,"nn_MSeg_etaDir",-8,8,40,"nn_MSeg_etaPos", -1.5,2.5,40, prefix)
-    do_plotting_2D(signal,signal,signal,"aux_llp_eta",-1.5,1.5,40,"aux_llp_Lxy", 1000,4000,60, prefix)
-    signal['aux_llp_jet_eta_difference'] = signal['aux_llp_eta'] - signal['jet_eta']
-    signal['aux_llp_jet_pt_difference'] = signal['aux_llp_pt'] - signal['jet_pt'].divide(1000)
-    do_plotting_2D(signal,signal,signal,"aux_llp_jet_eta_difference",-0.4,0.4,40,"aux_llp_eta", -1.5,1.5,60, prefix)
-    do_plotting_2D(signal,signal,signal,"aux_llp_jet_pt_difference",40,300,40,"aux_llp_eta", -1.5,1.5,60, prefix)
-
-    print("Plotting Cut Plots")
-
-    #do_plotting_withCut(signal,qcd,bib,"nn_MSeg_etaDir",-8,8,20,prefix,"jet_eta",1.0)
-
-    print("Plotting Truth Plots")
-
-    do_truth_plotting(signal,truth_dist,truth_xmin,truth_xmax,truth_bins,prefix)
-    #do_plotting_withCut(signal,qcd,bib,"nn_MSeg_etaDir",-8,8,20,prefix,"nn_MSeg_etaPos",1.0)
-
-    print("Plotting Variable Plots")
-
-    for key in xmin_dict:
-       do_plotting(signal,qcd,bib,key,xmin_dict[key],xmax_dict[key],bin_dict[key], prefix)
- 
- 
-    '''
-    do_plotting(signal,qcd,bib,"clus_pt",0,60000,30)
-    do_plotting(signal,qcd,bib,"clus_eta",-2.5,2.5,20)
-    do_plotting(signal,qcd,bib,"clus_phi",-3.14,3.14,20)
-
-    do_plotting(signal,qcd,bib,"jet_pt",0,200000,50)
-    do_plotting(signal,qcd,bib,"jet_eta",-2.5,2.5,20)
-    do_plotting(signal,qcd,bib,"jet_phi",-3.14,3.14,20)
-
-    do_plotting(signal,qcd,bib,"nn_MSeg_etaDir",-8,8,20)
-    do_plotting(signal,qcd,bib,"nn_MSeg_etaPos",-8,8,20)
-
-
-    do_plotting(signal,qcd,bib,"e_TileBar0",0,10000,20)
-    do_plotting(signal,qcd,bib,"e_TileBar1",0,10000,20)
-    do_plotting(signal,qcd,bib,"e_TileBar2",0,10000,20)
-
-    do_plotting(signal,qcd,bib,"nn_track_pt",0,10000,20)
-    do_plotting(signal,qcd,bib,"nn_track_eta",-2.5,2.5,20)
-    do_plotting(signal,qcd,bib,"nn_track_phi",-3.14,3.14,20)
-    do_plotting(signal,qcd,bib,"nn_track_d0",0,4,40)
-    do_plotting(signal,qcd,bib,"nn_track_z0",0,300,20)
-    do_plotting(signal,qcd,bib,"nn_track_PixelHits",0,10,10)
-    do_plotting(signal,qcd,bib,"nn_track_SCTHits",0,10,10)
-    '''
-
-    filter_nn_clus = [col for col in signal if col.startswith("clus_pt")]
-    filter_nn_track = [col for col in signal if col.startswith("nn_track_pt")]
-    filter_nn_MSeg = [col for col in signal if col.startswith("nn_MSeg_etaDir")]
-
-    plot_three_histos( ( (signal[filter_nn_clus].fillna(0)).astype(bool).sum(axis=1)).values.flatten(), ( (qcd[filter_nn_clus].fillna(0)).astype(bool).sum(axis=1)).values.flatten(), ( (bib[filter_nn_clus].fillna(0)).astype(bool).sum(axis=1)).values.flatten(), "n_constits", 0, 30, 30, prefix)
-    plot_three_histos( (  (signal[filter_nn_track].fillna(0)).astype(bool).sum(axis=1)).values.flatten(), ( (qcd[filter_nn_track].fillna(0)).astype(bool).sum(axis=1)).values.flatten(), ( (bib[filter_nn_track].fillna(0)).astype(bool).sum(axis=1)).values.flatten(), "n_tracks", 0, 20, 20, prefix)
-    plot_three_histos( ( (signal[filter_nn_MSeg].fillna(0)).astype(bool).sum(axis=1)).values.flatten(), ( (qcd[filter_nn_MSeg].fillna(0)).astype(bool).sum(axis=1)).values.flatten(), ( (bib[filter_nn_MSeg].fillna(0)).astype(bool).sum(axis=1)).values.flatten(), "n_MuonSegments", 0, 70, 70, prefix)
-
+def flatten(data, low_bin, high_bin, n_bins):
     
+    verbose = False
+    signal = data[data.label == 1]
+    if (verbose):
+         print(signal.shape[0])
+    qcd = data[data.label == 0]
+    if (verbose):
+        print(qcd.shape[0])
+    bib = data[data.label == 2]
+    if (verbose):
+        print(bib.shape[0])
+
+    signal = signal.loc[ (signal.jet_pt > low_bin) & (signal.jet_pt < high_bin)].copy()
+    qcd = qcd.loc[ (qcd.jet_pt > low_bin) & (qcd.jet_pt < high_bin)].copy()
+    bib = bib.loc[ (bib.jet_pt > low_bin) & (bib.jet_pt < high_bin)].copy()
+
+    if (verbose):
+        print(signal.shape[0])
+        print(qcd.shape[0])
+        print(bib.shape[0])
+
+        print(qcd["mcEventWeight"].sum())
+
+    signal_array, signal_bin_edges = np.histogram(signal["jet_pt"], bins = n_bins, range = [low_bin,high_bin], density = True)
+    if (verbose):
+        print(signal_array)
+        print(signal_bin_edges)
+        print(np.sum(signal_array)*((high_bin-low_bin)/n_bins))
+
+  
+    qcd_array, qcd_bin_edges = np.histogram(qcd["jet_pt"], weights=qcd["mcEventWeight"], bins = n_bins, range = [low_bin,high_bin], density = True)
+    if (verbose):
+        print(qcd_array)
+        print(qcd_bin_edges)
+        print(np.sum(qcd_array)*((high_bin-low_bin)/n_bins))
+
+    bib_array, bib_bin_edges = np.histogram(bib["jet_pt"], bins = n_bins, range = [low_bin,high_bin], density = True)
+    if (verbose):
+        print(bib_array)
+        print(bib_bin_edges)
+        print(np.sum(bib_array)*((high_bin-low_bin)/n_bins))
+
+    signal_flatWeights = signal_array*((high_bin-low_bin))
+    qcd_flatWeights = qcd_array*((high_bin-low_bin))
+    bib_flatWeights = bib_array*((high_bin-low_bin))
+
+    #qcd_correction = signal.loc[ (signal.jet_pt > low_bin) & (signal.jet_pt < high_bin)].shape[0] / ( qcd.loc[ (qcd.jet_pt > low_bin) & (qcd.jet_pt < high_bin)].shape[0])
+    qcd_correction = signal.loc[ (signal.jet_pt > low_bin) & (signal.jet_pt < high_bin)].shape[0] / ( qcd["mcEventWeight"].loc[ (qcd.jet_pt > low_bin) & (qcd.jet_pt < high_bin)].sum())
+    bib_correction = signal.loc[ (signal.jet_pt > low_bin) & (signal.jet_pt < high_bin)].shape[0] / bib.loc[ (bib.jet_pt > low_bin) & (bib.jet_pt < high_bin)].shape[0]
 
 
+    for i in range(len(signal_bin_edges)-1):
+        signal["flatWeight"].loc[ (signal.jet_pt > signal_bin_edges[i]) & (signal.jet_pt < signal_bin_edges[i+1]) ] = np.ones(signal.loc[ (signal.jet_pt > signal_bin_edges[i]) & (signal.jet_pt < signal_bin_edges[i+1]) ].shape[0]) * 1/(signal_flatWeights[i])
+        #qcd["flatWeight"].loc[ (qcd.jet_pt > qcd_bin_edges[i]) & (qcd.jet_pt < qcd_bin_edges[i+1]) ] = np.ones(qcd.loc[ (qcd.jet_pt > qcd_bin_edges[i]) & (qcd.jet_pt < qcd_bin_edges[i+1]) ].shape[0]) * qcd_correction/(qcd_flatWeights[i])
+        qcd["flatWeight"].loc[ (qcd.jet_pt > qcd_bin_edges[i]) & (qcd.jet_pt < qcd_bin_edges[i+1]) ] = qcd["mcEventWeight"].loc[ (qcd.jet_pt > qcd_bin_edges[i]) & (qcd.jet_pt < qcd_bin_edges[i+1]) ] * qcd_correction/(qcd_flatWeights[i])
+        bib["flatWeight"].loc[ (bib.jet_pt > bib_bin_edges[i]) & (bib.jet_pt < bib_bin_edges[i+1]) ] = np.ones(bib.loc[ (bib.jet_pt > bib_bin_edges[i]) & (bib.jet_pt < bib_bin_edges[i+1]) ].shape[0]) * bib_correction/(bib_flatWeights[i])
 
+    if (verbose):
+        print(np.sum(signal["flatWeight"].loc[ (signal.jet_pt > low_bin) & (signal.jet_pt < high_bin)].values))
+        print(np.sum(qcd["flatWeight"].loc[ (qcd.jet_pt > low_bin) & (qcd.jet_pt < high_bin)].values))
+        print(np.sum(bib["flatWeight"].loc[ (bib.jet_pt > low_bin) & (bib.jet_pt < high_bin)].values))
+        print(signal.loc[ (signal.jet_pt > low_bin) & (signal.jet_pt < high_bin)].shape[0] )
 
+    df = pd.DataFrame()
+    df = df.append(signal)
+    df = df.append(qcd)
+    df = df.append(bib)
+
+    do_plotting(signal,qcd,bib,"jet_pt",low_bin,high_bin,n_bins)
+
+    return(df)
 
