@@ -18,11 +18,11 @@ from matplotlib.ticker import MultipleLocator, FixedLocator, FormatStrFormatter,
 
 import keras
 from keras.models import Sequential, Model
-from keras.layers import Dense, Activation, Highway, Dropout, Masking, LSTM, SimpleRNN, Input
+from keras.layers import Dense, Activation, Highway, Dropout, Masking, LSTM, SimpleRNN, Input, CuDNNLSTM
 from keras.preprocessing import sequence
 from keras.callbacks import EarlyStopping, ModelCheckpoint, Callback
 from keras.optimizers import SGD, Adam, Adadelta, Adagrad, Adamax, RMSprop
-#from keras.regularizers import l1, l2, l1l2, activity_l1l2
+from keras.regularizers import l1, l2, L1L2
 
 import sklearn
 from sklearn.metrics import roc_curve, auc
@@ -73,7 +73,7 @@ def find_threshold(prediction,y, weight, perc, label):
 
     return threshold, leftovers
 
-def signal_llp_efficiencies(prediction,y_test,Z_test,destination):
+def signal_llp_efficiencies(prediction,y_test,Z_test,destination,f):
     sig_rows = np.where(y_test==1)
     prediction = prediction[sig_rows]
     Z_test = Z_test.iloc[sig_rows]
@@ -92,6 +92,7 @@ def signal_llp_efficiencies(prediction,y_test,Z_test,destination):
         plot_y.append(temp_eff)
         plot_z.append(mS)
         print("mH: " + str(mH) + ", mS: " + str(mS) + ", Eff: " + str(temp_eff))
+        f.write("%s,%s,%s\n" % (str(mH), str(mS), str(temp_eff)) )
 
     plt.clf()
     plt.figure()
@@ -233,10 +234,14 @@ def plot_prediction_histograms(destination,
     ax.legend(loc='best')
 
     #matplotlib.patch.Patch properties
+    '''
     props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
+    '''
     # place a text box in upper left in axes coords
+    '''
     ax.text(0.05, 0.8, textstr, color='black', transform=ax.transAxes, 
         bbox=dict(facecolor='none', edgecolor='black', boxstyle='round,pad=1'))
+    '''
 
     plt.savefig(destination+"sig_predictions"+ ".pdf", format='pdf', transparent=True)
     plt.clf()
@@ -252,10 +257,14 @@ def plot_prediction_histograms(destination,
     ax.legend()
 
     #matplotlib.patch.Patch properties
+    '''
     props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
+    '''
     # place a text box in upper left in axes coords
+    '''
     ax.text(0.05, 0.8, textstr, color='black', transform=ax.transAxes, 
         bbox=dict(facecolor='none', edgecolor='black', boxstyle='round,pad=1'))
+    '''
 
     plt.savefig(destination+"qcd_predictions"+ ".pdf", format='pdf', transparent=True)
     plt.clf()
@@ -271,50 +280,53 @@ def plot_prediction_histograms(destination,
     ax.legend()
 
     #matplotlib.patch.Patch properties
+    '''
     props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
     # place a text box in upper left in axes coords
     ax.text(0.05, 0.8, textstr, color='black', transform=ax.transAxes, 
         bbox=dict(facecolor='none', edgecolor='black', boxstyle='round,pad=1'))
+    '''
 
     plt.savefig(destination+"bib_predictions"+ ".pdf", format='pdf', transparent=True)
     plt.clf()
     return
 
-def evaluate_model(X_test, y_test, weights_test, mcWeights_test,  Z_test,  model_to_do, deleteTime):
+def evaluate_model(X_test, y_test, weights_test, mcWeights_test,  Z_test,  model_to_do, deleteTime, num_constit_lstm, num_track_lstm, num_mseg_lstm, reg_value, doTrackLSTM, doMSegLSTM, doParametrization, learning_rate):
 
-    if (model_to_do == "dense"):
+    if ("dense" in model_to_do):
 
         model = Sequential()
-        model.add(Dense(1024, input_dim=X_test.shape[1]))
+
+        model.add(Dense(2000, input_dim=X_test.shape[1]))
         model.add(Dropout(0.2))
         model.add(Activation('relu'))
-        model.add(Dense(512))
+        model.add(Dense(1000))
         model.add(Dropout(0.2))
         model.add(Activation('relu'))
-        model.add(Dense(124))
+        model.add(Dense(256))
         model.add(Dropout(0.2))
         model.add(Activation('relu'))
-        model.add(Dense(24))
+        model.add(Dense(64))
         model.add(Activation('relu'))
         model.add(Dense(3))
         model.add(Activation('softmax'))
         model.compile(optimizer='Adam', loss='categorical_crossentropy', metrics=['accuracy'])
         model.summary()
-        model.load_weights("keras_outputs/checkpoint_"+model_to_do)
+        model.load_weights("keras_outputs/"+model_to_do+'/checkpoint')
 
     if ("lstm" in model_to_do):
 
-        if deleteTime:
-            num_constit_vars = 11
-        else:
-            num_constit_vars = 12
-        num_track_vars = 12
-        if deleteTime:
-            num_MSeg_vars = 4
-        else:
-            num_MSeg_vars = 5
-
         num_jet_vars = 3
+
+
+        num_constit_vars = 12
+        if deleteTime == True:
+            num_constit_vars = 11
+        num_track_vars = 12
+        num_MSeg_vars = 5
+        if deleteTime == True:
+            num_MSeg_vars = 4
+
 
         num_max_constits = 30
         num_max_tracks = 20
@@ -330,6 +342,8 @@ def evaluate_model(X_test, y_test, weights_test, mcWeights_test,  Z_test,  model
         else:
             X_test_MSeg = X_test.loc[:,'nn_MSeg_etaPos_0':'nn_MSeg_t0_69']
         X_test_jet = X_test.loc[:,'jet_pt':'jet_phi']
+        if doParametrization:
+            X_test_jet = X_test_jet.join(Z_test)
 
         for i in range(0,num_max_constits):
             temp_loc = X_test_constit.columns.get_loc('clus_phi_'+str(i))
@@ -348,25 +362,36 @@ def evaluate_model(X_test, y_test, weights_test, mcWeights_test,  Z_test,  model
         X_test_track = X_test_track.values.reshape(X_test_track.shape[0],num_max_tracks,num_track_vars)
         X_test_MSeg = X_test_MSeg.values.reshape(X_test_MSeg.shape[0],num_max_MSegs,num_MSeg_vars)
 
+
         print( "CONSTIT SIZE: " + str(X_test_constit[0].shape) )
 
         constit_input = Input(shape=(X_test_constit[0].shape),dtype='float32',name='constit_input')
-        constit_out = LSTM(num_constit_vars)(constit_input)
+        constit_out = LSTM(num_constit_lstm, kernel_regularizer = L1L2(l1=reg_value, l2=reg_value))(constit_input)
         constit_output = Dense(3, activation='softmax', name='constit_output')(constit_out)
 
         track_input = Input(shape=(X_test_track[0].shape),dtype='float32',name='track_input')
-        track_out = LSTM(num_track_vars)(track_input)
+        track_out = LSTM(num_track_lstm, kernel_regularizer = L1L2(l1=reg_value, l2=reg_value))(track_input)
         track_output = Dense(3, activation='softmax', name='track_output')(track_out)
 
         MSeg_input = Input(shape=(X_test_MSeg[0].shape),dtype='float32',name='MSeg_input')
-        MSeg_out = LSTM(num_MSeg_vars)(MSeg_input)
+        MSeg_out = LSTM(num_mseg_lstm, kernel_regularizer = L1L2(l1=reg_value, l2=reg_value))(MSeg_input)
         MSeg_output = Dense(3, activation='softmax', name='MSeg_output')(MSeg_out)
 
         jet_input = Input(shape = X_test_jet.values[0].shape, name='jet_input')
         jet_out = Dense(3)(jet_input)
         jet_output = Dense(3, activation='softmax', name='jet_output')(jet_out)
 
-        x = keras.layers.concatenate([constit_out, track_out, MSeg_out, jet_input])
+        layersToConcatenate = [constit_out, track_out, MSeg_out, jet_input]
+
+        if (doTrackLSTM and not doMSegLSTM):
+            layersToConcatenate = [constit_out, track_out, jet_input]
+        if (doMSegLSTM and not doTrackLSTM):
+            layersToConcatenate = [constit_out, MSeg_out, jet_input]
+        if (not doTrackLSTM and not doMSegLSTM):
+            layersToConcatenate = [constit_out, jet_input]
+
+
+        x = keras.layers.concatenate(layersToConcatenate)
 
         x = Dense(512, activation='relu')(x)
         x = Dropout(0.2)(x)
@@ -375,18 +400,49 @@ def evaluate_model(X_test, y_test, weights_test, mcWeights_test,  Z_test,  model
 
         main_output = Dense(3, activation='softmax', name='main_output')(x)
 
-        model = Model(inputs=[constit_input, track_input, MSeg_input, jet_input], outputs=[main_output, constit_output, track_output, MSeg_output, jet_output])
+        layers_to_input = [constit_input, track_input, MSeg_input, jet_input]
+        layers_to_output = [main_output, constit_output, track_output, MSeg_output, jet_output]
+        x_to_validate = [X_test_constit, X_test_track, X_test_MSeg, X_test_jet.values]
+        y_to_validate = [y_test, y_test, y_test, y_test,y_test]
+        weights_to_validate = [weights_test.values, weights_test.values, weights_test.values,weights_test.values,weights_test.values]
+        weights_for_loss = [1., 0.1, 0.4, 0.2,0.1]
+
+        if (doTrackLSTM and not doMSegLSTM):
+            layers_to_input = [constit_input, track_input,  jet_input]
+            layers_to_output = [main_output, constit_output, track_output, jet_output]
+            x_to_validate = [X_test_constit, X_test_track, X_test_jet.values]
+            y_to_validate = [y_test, y_test, y_test, y_test]
+            weights_to_validate = [weights_test.values,  weights_test.values,weights_test.values,weights_test.values]
+            weights_for_loss = [1., 0.1, 0.4, 0.1]
+        if (doMSegLSTM and not doTrackLSTM):
+            print("HERE")
+            layers_to_input = [constit_input, MSeg_input,  jet_input]
+            layers_to_output = [main_output, constit_output, MSeg_output, jet_output]
+            x_to_validate = [X_test_constit, X_test_MSeg, X_test_jet.values]
+            y_to_validate = [y_test, y_test, y_test, y_test]
+            weights_to_validate = [weights_test.values,  weights_test.values,weights_test.values,weights_test.values]
+            weights_for_loss = [1., 0.1, 0.2,0.1]
+        if (not doTrackLSTM and not doMSegLSTM):
+            layers_to_input = [constit_input,  jet_input]
+            layers_to_output = [main_output, constit_output, jet_output]
+            x_to_validate = [X_test_constit, X_test_jet.values]
+            y_to_validate = [y_test, y_test,  y_test]
+            weights_to_validate = [weights_test.values,weights_test.values,weights_test.values]
+            weights_for_loss = [1., 0.1, 0.1]
+
+        model = Model(inputs=layers_to_input, outputs=layers_to_output)
 
 
-        model.compile(optimizer='Adadelta', loss='categorical_crossentropy',
-            loss_weights=[1., 0.1, 0.4, 0.2,0.1], metrics=['accuracy'])
+        opt = keras.optimizers.Nadam(lr=learning_rate, beta_1=0.9, beta_2=0.999, epsilon=None, schedule_decay=0.004)
+        model.compile(optimizer=opt, loss='categorical_crossentropy',
+            loss_weights=weights_for_loss, metrics=['accuracy'])
         model.load_weights("keras_outputs/"+model_to_do+'/checkpoint')
 
-    if (model_to_do == "dense"):
+    if ("dense" in model_to_do):
 	    prediction = model.predict(X_test.values, verbose=True)
 
     elif ("lstm" in model_to_do):
-        prediction = model.predict([X_test_constit, X_test_track, X_test_MSeg, X_test_jet], verbose = True)
+        prediction = model.predict(x_to_validate, verbose = True)
         prediction = prediction[0]
 
     #print(y_test==2)
@@ -410,12 +466,12 @@ def evaluate_model(X_test, y_test, weights_test, mcWeights_test,  Z_test,  model
     #threshold_array = [0.995,(1-0.009),(1-0.023),(1-0.059),(1-0.151),(1-0.389),0.001]
     counter=0
     third_label=2
+    f = open(destination+"training_details.txt","a")
 
 
     #threshold_array = [0.99,(1-0.03),(1-0.09),(1-0.23),(1-0.59),0.001]
     #threshold_array =  np.logspace(-4,0,30)[::-3]
     #for percent in range(0,100,10):
-    signal_llp_efficiencies(prediction,y_test,Z_test, destination)
     for item in threshold_array:
         test_perc = item*100
         test_label = third_label
@@ -423,6 +479,7 @@ def evaluate_model(X_test, y_test, weights_test, mcWeights_test,  Z_test,  model
         #print(y_predictions.shape)
         test_threshold, leftovers = find_threshold(prediction,y_test, mcWeights_test, test_perc, test_label)
         bkg_eff, tag_eff, roc_auc = make_multi_roc_curve(prediction,y_test,mcWeights_test,test_threshold,test_label,leftovers)
+        f.write("%s, %s\n" % (str(-item+1), str(roc_auc)) )
         print("AUC: " + str(roc_auc) )
         plt.plot(tag_eff, bkg_eff, label= f"BIB Eff: {(-item+1):.3f}" +f", AUC: {roc_auc:.3f}")
         plt.xlabel("LLP Tagging Efficiency")
@@ -437,6 +494,7 @@ def evaluate_model(X_test, y_test, weights_test, mcWeights_test,  Z_test,  model
     # place a text box in upper left in axes coords
     #ax.text(0.05, 0.8, textstr, color='black', transform=ax.transAxes, 
     #    bbox=dict(facecolor='none', edgecolor='black', boxstyle='round,pad=1'))
+    signal_llp_efficiencies(prediction,y_test,Z_test, destination,f)
     plt.legend()
     plt.yscale('log', nonposy='clip')
     signal_test = prediction[y_test==1]
@@ -452,6 +510,8 @@ def evaluate_model(X_test, y_test, weights_test, mcWeights_test,  Z_test,  model
         plt.savefig(destination + "roc_curve_atlas_rej_qcd" + ".pdf", format='pdf', transparent=True)
     plt.clf()
     plt.cla()
+    f.close()
+    #plot_vars_final(X_test, y_test, prediction, mcWeights_test)
 
 
 

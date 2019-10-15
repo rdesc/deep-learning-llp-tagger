@@ -1,9 +1,3 @@
---signal_path=/data/fcormier/calRatio/fullRun2/grid_output_1/signal/
---qcd_path=/data/fcormier/calRatio/fullRun2/grid_output_1/qcd/
---bib_path=/data/fcormier/calRatio/fullRun2/grid_output_1/bib/
---output_path=/data/fcormier/calRatio/fullRun2/validation/raw/
---input_combo_path=/data/fcormier/calRatio/fullRun2/validation/raw/2019-09-19_14:10:41_363828/
---output_combo_path=/data/fcormier/calRatio/fullRun2/raw/2019-09-19_14:10:41_363828/
---output_process_path=/data/fcormier/calRatio/fullRun2/noMsegOrder/
---input_training_path=/data/fcormier/calRatio/fullRun2/transformOutput/2019-07-10_17:18:21_603916/
---doCombination
+--file_name=/fast_scratch/fcormier/calRatio/noMsegOrder/processed_output.pkl
+--finalPlots_model=lstm_validationTest_fracEvents_0.4_constits_30_tracks_20_MSegs_70_LSTMconstits_60_LSTMtracks_60_LSTMmseg_25_kernelReg_0.001_epochs_50_dropout_0.1_doTrackLSTM_True_doMSegLSTM_True_2019-09-19_14:27:35/
+--doTraining
