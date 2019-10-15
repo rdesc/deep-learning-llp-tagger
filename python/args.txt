@@ -1,10 +1,9 @@
 --signal_path=/data/fcormier/calRatio/fullRun2/grid_output_1/signal/
 --qcd_path=/data/fcormier/calRatio/fullRun2/grid_output_1/qcd/
 --bib_path=/data/fcormier/calRatio/fullRun2/grid_output_1/bib/
---output_path=/data/fcormier/calRatio/fullRun2/transformOutput/
---input_combo_path=/data/fcormier/calRatio/fullRun2/transformOutput/
---output_combo_path=/data/fcormier/calRatio/fullRun2/comboOutput/
---input_process_path=/data/fcormier/calRatio/fullRun2/comboOutput/
---output_process_path=/data/fcormier/calRatio/fullRun2/preProcessOutput/
---input_training_path=/data/fcormier/calRatio/fullRun2/preProcessOutput/
---doTraining
+--output_path=/data/fcormier/calRatio/fullRun2/validation/raw/
+--input_combo_path=/data/fcormier/calRatio/fullRun2/validation/raw/2019-09-19_14:10:41_363828/
+--output_combo_path=/data/fcormier/calRatio/fullRun2/raw/2019-09-19_14:10:41_363828/
+--output_process_path=/data/fcormier/calRatio/fullRun2/noMsegOrder/
+--input_training_path=/data/fcormier/calRatio/fullRun2/transformOutput/2019-07-10_17:18:21_603916/
+--doCombination

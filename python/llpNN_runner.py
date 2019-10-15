@@ -63,7 +63,7 @@ df = pd.DataFrame()
 
 if args.doTransform:
     print("Doing transform")
-    loop_events(args.signal_path,args.qcd_path,args.bib_path,args.output_path)
+    loop_events(args.signal_path,args.qcd_path,args.bib_path,args.output_path, True)
 
 if args.doCombination:
     print("Doing Combination in folder: " + str(args.input_combo_path))

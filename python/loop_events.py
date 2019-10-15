@@ -27,7 +27,7 @@ import subprocess
 
 from datetime import datetime
 
-def loop_events(signal_path,qcd_path,bib_path,output_path):
+def loop_events(signal_path,qcd_path,bib_path,output_path, isTraining):
 
     signal_files = [
         glob.glob(signal_path+"/*/*.trees.root"),
@@ -49,7 +49,11 @@ def loop_events(signal_path,qcd_path,bib_path,output_path):
     output_path = output_path + "/" + creation_time
     for files_at_mass_point in signal_files:
         for filename in files_at_mass_point:
-            talk = ('qsub -l nodes=1:ppn=4 -vinput1=\"' + filename + '\",input2=\"' + output_path + '\",input3=\"' + '1' + '\" batch_extract_info.pbs')
+            talk=""
+            if isTraining:
+                talk = ('qsub -l nodes=1:ppn=4 -vinput1=\"' + filename + '\",input2=\"' + output_path + '\",input3=\"' + '1' + '\" batch_extract_info.pbs')
+            else:
+                talk = ('qsub -l nodes=1:ppn=4 -vinput1=\"' + filename + '\",input2=\"' + output_path + '\",input3=\"' + '1' + '\" batch_extract_info_cr2.pbs')
             files_at_once=80
             print(talk)
             print(files_at_once)
@@ -65,7 +69,11 @@ def loop_events(signal_path,qcd_path,bib_path,output_path):
     for files_at_mass_point in qcd_files:
         for filename in files_at_mass_point:
             print("FILE: " + str(filename))
-            talk = ('qsub -l nodes=1:ppn=4 -vinput1=\"' + filename + '\",input2=\"' + output_path + '\",input3=\"' + '0' + '\" batch_extract_info.pbs')
+            talk=""
+            if isTraining:
+                talk = ('qsub -l nodes=1:ppn=4 -vinput1=\"' + filename + '\",input2=\"' + output_path + '\",input3=\"' + '1' + '\" batch_extract_info.pbs')
+            else:
+                talk = ('qsub -l nodes=1:ppn=4 -vinput1=\"' + filename + '\",input2=\"' + output_path + '\",input3=\"' + '1' + '\" batch_extract_info_cr2.pbs')
             files_at_once=80
             print(talk)
             print(files_at_once)
@@ -80,7 +88,11 @@ def loop_events(signal_path,qcd_path,bib_path,output_path):
 
     for files_at_mass_point in bib_files:
         for filename in files_at_mass_point:
-            talk = ('qsub -l nodes=1:ppn=4 -vinput1=\"' + filename + '\",input2=\"' + output_path + '\",input3=\"' + '2' + '\" batch_extract_info.pbs')
+            talk=""
+            if isTraining:
+                talk = ('qsub -l nodes=1:ppn=4 -vinput1=\"' + filename + '\",input2=\"' + output_path + '\",input3=\"' + '1' + '\" batch_extract_info.pbs')
+            else:
+                talk = ('qsub -l nodes=1:ppn=4 -vinput1=\"' + filename + '\",input2=\"' + output_path + '\",input3=\"' + '1' + '\" batch_extract_info_cr2.pbs')
             files_at_once=80
             print(talk)
             print(files_at_once)

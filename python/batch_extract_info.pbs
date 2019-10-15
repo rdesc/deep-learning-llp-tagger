@@ -1,0 +1,31 @@
+#!/bin/sh
+#PBS -N skeleton
+#PBS -l mem=4gb
+#PBS -l walltime=4:00:00
+#PBS -l procs=4
+#PBS -j oe
+#PBS -o /home/fcormier//calRatio/fullRun2/llp_NN/python/batch_logs
+#PBS -e /home/fcormier/calRatio/fullRun2/llp_NN/python/batch_logs
+#PBS -r n
+#PBS -V
+
+mydate(){
+    date +"%F_%H-%M-%S_%N"
+}
+ 
+mkdir /tmp/${PBS_JOBID}
+cd /tmp/${PBS_JOBID}
+cp --parents $input1 .
+cp /home/fcormier/calRatio/fullRun2/llp_NN/python/extract_events.py .
+cp /home/fcormier/calRatio/fullRun2/llp_NN/python/setup.sh .
+source setup.sh
+mkdir outputs
+echo "Current working directory is `pwd`" 
+echo "Starting run at: `date`"
+echo $input1
+echo "$mydate"
+/home/fcormier/miniconda3/envs/process_events/bin/python extract_events.py $input1 $input3 "$(mydate)"
+mkdir -p $input2
+cp /tmp/${PBS_JOBID}/outputs/*.pkl $input2
+/bin/rm -rf /tmp/${PBS_JOBID}
+
