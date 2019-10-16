@@ -18,7 +18,6 @@ conda env create -f conda_train_llp.yml
 source startML1.sh
 ```
 
-Only the last two lines need to be repeated each time you come back to the code.
 
 
 ## LLPNN\_Runner
@@ -28,9 +27,6 @@ This code, **llpNN_runner.py**, is the steering code for the various functions o
 ### Arguments
 
 These are arguments input to **args.txt**.
-
-For transform, combination and pre-processing, in python/ directory:
-
 
 
 #### Training

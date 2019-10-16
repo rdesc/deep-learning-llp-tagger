@@ -44,6 +44,7 @@ from sklearn.preprocessing import label_binarize
 
 from numpy import unravel_index
 
+#Funtion to find threshold weight at which you get percentage (perc) right
 def find_threshold(prediction,y, weight, perc, label):
 
 
@@ -73,6 +74,8 @@ def find_threshold(prediction,y, weight, perc, label):
 
     return threshold, leftovers
 
+
+#Plot signal efficiency as function of mH, mS
 def signal_llp_efficiencies(prediction,y_test,Z_test,destination,f):
     sig_rows = np.where(y_test==1)
     prediction = prediction[sig_rows]
@@ -105,19 +108,25 @@ def signal_llp_efficiencies(prediction,y_test,Z_test,destination,f):
     plt.savefig(destination+"signal_llp_efficiencies"+ ".pdf", format='pdf', transparent=True)
     plt.clf()
 
-
+#Make family of ROC Curves
+#Since this is a 3-class problem, first make cut on BIB weight for given percentage of correctly tagged BIB
+#Take all leftover, and make ROC curve with those
+#Make sure to take into account signal and QCD lost in BIB tagged jets
 def make_multi_roc_curve(prediction,y,weight,threshold,label,leftovers):
     tag_eff = []
     bkg_eff = []
 
+    #Find how many signal, bib, qcd jets there are
     sig_tot = np.sum(np.where(np.equal(y, 1), weight, 0))
     qcd_tot = np.sum(np.where(np.equal(y, 0), weight, 0))
     bib_tot = np.sum(np.where(np.equal(y, 2), weight, 0))
+    #Leftover are the indices of jets left after taking out jets below BIB cut
+    #So take all those left
     prediction_left = prediction[leftovers]
     y_left = y.values[leftovers]
-    print(len(y_left))
     weight_left = weight.values[leftovers]
 
+    #Find signal_ratio and qcd_ratio and bib_ratio, ratio of how many signal or qcd or bib left after BIB cut vs how many there were originally
     num_signal_original = y[y==1].size
     num_signal_leftover = y_left[y_left==1].size
     signal_ratio = num_signal_leftover/num_signal_original
@@ -139,29 +148,33 @@ def make_multi_roc_curve(prediction,y,weight,threshold,label,leftovers):
     prediction_left_bib = prediction_left[:,2]
     #y_left[y_left==2] = 0
 
+    #If we are looking at BIB cut, then signal vs QCD roc curve
+    #Use roc_curve function from scikit-learn
     if label == 2:
         
         y_roc = label_binarize(y_left, classes=[0, 1, 2])
         (fpr, tpr, _) = roc_curve(y_roc[:,1], prediction_left_signal,  pos_label=1)
         #(fpr, tpr, _) = roc_curve(y_left, prediction_left_signal, sample_weight=weight_left, pos_label=1)
-        #print(str(list(1-fpr[1000:1100])))
-        #print(str(list(tpr[1000:1100])))
+        #Scale results by qcd_ratio, signal_ratio
         a = auc((1-fpr)*qcd_ratio,tpr*signal_ratio)
         
+        #return results of roc curve
         return (1/fpr)*qcd_ratio, tpr*signal_ratio, a
 
 
+    #If we are looking at QCD cut, then signal vs BIB roc curve
+    #Use roc_curve function from scikit-learn
     if label == 0:
         
         y_roc = label_binarize(y_left, classes=[0, 1, 2])
         (fpr, tpr, _) = roc_curve(y_roc[:,1], prediction_left_signal, sample_weight=weight_left, pos_label=1)
-        #print(str(list(1-fpr[1000:1100])))
-        #print(str(list(tpr[1000:1100])))
+        #Scale results by bib_ratio, signal_ratio
         a = auc((1-fpr)*bib_ratio,tpr*signal_ratio)
         
+        #return results of roc curve
         return (1/fpr)*bib_ratio, tpr*signal_ratio, a
 
-
+#Obsolete function
 def get_efficiencies_with_weights(py, y ,weight, threshold):
             y.astype(int)
             #print("py examples:")
@@ -206,7 +219,7 @@ def get_efficiencies_with_weights(py, y ,weight, threshold):
             #print("Accuracy: " + str(accuracy))
             return sig_eff, bg_rej, sig_err, bg_rej_err, S, B
 
-
+#Make signal, bib, qcd weight plots
 def plot_prediction_histograms(destination,
                                 prediction,
                                 labels, weight, model_to_do):
@@ -293,6 +306,9 @@ def plot_prediction_histograms(destination,
 
 def evaluate_model(X_test, y_test, weights_test, mcWeights_test,  Z_test,  model_to_do, deleteTime, num_constit_lstm, num_track_lstm, num_mseg_lstm, reg_value, doTrackLSTM, doMSegLSTM, doParametrization, learning_rate):
 
+    #Easy set up of dense model
+    #Unfortunately have to hard code architecture for now
+    #TODO: Not hardcode architecture
     if ("dense" in model_to_do):
 
         model = Sequential()
@@ -314,8 +330,11 @@ def evaluate_model(X_test, y_test, weights_test, mcWeights_test,  Z_test,  model
         model.summary()
         model.load_weights("keras_outputs/"+model_to_do+'/checkpoint')
 
+    #Set up lstm model
     if ("lstm" in model_to_do):
 
+        #Have to do all same set up as training
+        #TODO: Harmonize set up
         num_jet_vars = 3
 
 
@@ -346,7 +365,7 @@ def evaluate_model(X_test, y_test, weights_test, mcWeights_test,  Z_test,  model
             X_test_jet = X_test_jet.join(Z_test)
 
         for i in range(0,num_max_constits):
-            temp_loc = X_test_constit.columns.get_loc('clus_phi_'+str(i))
+            temp_loc = X_test_constit.columns.get_loc('clusTime_'+str(i))
 
             X_test_constit.insert(temp_loc,'l4_hcal_'+str(i),X_test['l4_hcal_'+str(i)])
             X_test_constit.insert(temp_loc,'l3_hcal_'+str(i),X_test['l3_hcal_'+str(i)])
@@ -436,8 +455,11 @@ def evaluate_model(X_test, y_test, weights_test, mcWeights_test,  Z_test,  model
         opt = keras.optimizers.Nadam(lr=learning_rate, beta_1=0.9, beta_2=0.999, epsilon=None, schedule_decay=0.004)
         model.compile(optimizer=opt, loss='categorical_crossentropy',
             loss_weights=weights_for_loss, metrics=['accuracy'])
+        #Up to here same procedure as in training
+        #Now load weights from already trained network
         model.load_weights("keras_outputs/"+model_to_do+'/checkpoint')
 
+    #Use network to predict labels from test set, depending on if dense or lstm model
     if ("dense" in model_to_do):
 	    prediction = model.predict(X_test.values, verbose=True)
 
@@ -448,6 +470,7 @@ def evaluate_model(X_test, y_test, weights_test, mcWeights_test,  Z_test,  model
     #print(y_test==2)
     #print(weights_test)
 
+    #Sum of MC weights
     bib_weight = np.sum(mcWeights_test[y_test==2])
     sig_weight = np.sum(mcWeights_test[y_test==1])
     qcd_weight = np.sum(mcWeights_test[y_test==0])
@@ -462,25 +485,36 @@ def evaluate_model(X_test, y_test, weights_test, mcWeights_test,  Z_test,  model
     destination = "plots/"+model_to_do + "/"
     plot_prediction_histograms(destination,prediction,y_test, mcWeights_test, model_to_do)
     #threshold_array = np.logspace(-0.1,-0.001,30)[::-3]
+    #This will be the BIB efficiencies to aim for when making family of ROC curves
     threshold_array = [0.9999,(1-0.001),(1-0.003),(1-0.009),(1-0.023),(1-0.059),(1-0.151),(1-0.389),0.001]
     #threshold_array = [0.995,(1-0.009),(1-0.023),(1-0.059),(1-0.151),(1-0.389),0.001]
     counter=0
+    #Third label: the label of the class we are doing a 'family' of. Other two classes will make the ROC curve
     third_label=2
+    #We'll be writing the stats to training_details.txt
     f = open(destination+"training_details.txt","a")
 
 
     #threshold_array = [0.99,(1-0.03),(1-0.09),(1-0.23),(1-0.59),0.001]
     #threshold_array =  np.logspace(-4,0,30)[::-3]
     #for percent in range(0,100,10):
+
+    #Loop over all arrays in threshold_array
     for item in threshold_array:
+        #Convert decimal to percentage (code used was in percentage, oh well)
         test_perc = item*100
         test_label = third_label
         #print(prediction.shape)
         #print(y_predictions.shape)
+
+        #Find threshold, or at what label we will have the required percentage of 'test_label' correctl predicted
         test_threshold, leftovers = find_threshold(prediction,y_test, mcWeights_test, test_perc, test_label)
+        #Make ROC curve of leftovers, those not tagged by above function
         bkg_eff, tag_eff, roc_auc = make_multi_roc_curve(prediction,y_test,mcWeights_test,test_threshold,test_label,leftovers)
+        #Write AUC to training_details.txt
         f.write("%s, %s\n" % (str(-item+1), str(roc_auc)) )
         print("AUC: " + str(roc_auc) )
+        #Make ROC curve
         plt.plot(tag_eff, bkg_eff, label= f"BIB Eff: {(-item+1):.3f}" +f", AUC: {roc_auc:.3f}")
         plt.xlabel("LLP Tagging Efficiency")
         axes = plt.gca()
@@ -494,7 +528,13 @@ def evaluate_model(X_test, y_test, weights_test, mcWeights_test,  Z_test,  model
     # place a text box in upper left in axes coords
     #ax.text(0.05, 0.8, textstr, color='black', transform=ax.transAxes, 
     #    bbox=dict(facecolor='none', edgecolor='black', boxstyle='round,pad=1'))
+
+    #Make plots of signal efficiency vs mH, mS
     signal_llp_efficiencies(prediction,y_test,Z_test, destination,f)
+
+    #Finish and plot ROC curve family
+    #Currently not workign for some reason
+    #TODO: Fix
     plt.legend()
     plt.yscale('log', nonposy='clip')
     signal_test = prediction[y_test==1]
