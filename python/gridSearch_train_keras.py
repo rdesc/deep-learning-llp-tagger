@@ -314,7 +314,7 @@ def train_llp( filename, frac = 1.0, num_max_constits=30, num_max_tracks=20, num
         #Need to tell network shape of input for jet constituents
         constit_input = Input(shape=(X_train_constit[0].shape),dtype='float32',name='constit_input')
         #Have one LSTM layer, with regularizer, tied to input node
-        constit_out = LSTM(num_constit_lstm, kernel_regularizer = L1L2(l1=reg_value, l2=reg_value))(constit_input)
+        constit_out = CuDNNLSTM(num_constit_lstm, kernel_regularizer = L1L2(l1=reg_value, l2=reg_value))(constit_input)
         #Have a constit LSTM output, which does the classification using only constituents.
         #This lets you monitor how the consituent LSTM is doing, but is not used for anything else
         constit_output = Dense(3, activation='softmax', name='constit_output')(constit_out)
@@ -322,7 +322,7 @@ def train_llp( filename, frac = 1.0, num_max_constits=30, num_max_tracks=20, num
         #Need to tell network shape of input for tracks
         track_input = Input(shape=(X_train_track[0].shape),dtype='float32',name='track_input')
         #Have one LSTM layer, with regularizer, tied to input node
-        track_out = LSTM(num_track_lstm , kernel_regularizer = L1L2(l1=reg_value, l2=reg_value))(track_input)
+        track_out = CuDNNLSTM(num_track_lstm , kernel_regularizer = L1L2(l1=reg_value, l2=reg_value))(track_input)
         #Have a track LSTM output, which does the classification using only tracks.
         #This lets you monitor how the track LSTM is doing, but is not used for anything else
         track_output = Dense(3, activation='softmax', name='track_output')(track_out)
@@ -330,7 +330,7 @@ def train_llp( filename, frac = 1.0, num_max_constits=30, num_max_tracks=20, num
         #Need to tell network shape of input for muon segments
         MSeg_input = Input(shape=(X_train_MSeg[0].shape),dtype='float32',name='MSeg_input')
         #Have one LSTM layer, with regularizer, tied to input node
-        MSeg_out = LSTM(num_mseg_lstm, kernel_regularizer = L1L2(l1=reg_value, l2=reg_value))(MSeg_input)
+        MSeg_out = CuDNNLSTM(num_mseg_lstm, kernel_regularizer = L1L2(l1=reg_value, l2=reg_value))(MSeg_input)
         #Have a muon segment LSTM output, which does the classification using only muon segments.
         #This lets you monitor how the muon segment LSTM is doing, but is not used for anything else
         MSeg_output = Dense(3, activation='softmax', name='MSeg_output')(MSeg_out)

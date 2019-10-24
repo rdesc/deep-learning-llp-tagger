@@ -38,7 +38,7 @@ lr_values = [0.005,0.002,0.0005,0.0001]
 
 #train_llp(args.file_name, model_to_do = model_to_do, frac=0.4)
 if (args.doTraining == True):
-    train_llp(args.file_name, model_to_do = model_to_do, frac=0.4)
+    train_llp(args.file_name, model_to_do = model_to_do, frac=0.4, epochs=3)
     gc.collect()
 
 if (args.makeFinalPlots == True):

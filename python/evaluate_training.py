@@ -159,7 +159,10 @@ def make_multi_roc_curve(prediction,y,weight,threshold,label,leftovers):
         a = auc((1-fpr)*qcd_ratio,tpr*signal_ratio)
         
         #return results of roc curve
-        return (1/fpr)*qcd_ratio, tpr*signal_ratio, a
+        print("FPR:")
+        goodIndices = np.where(np.isfinite(1/fpr))
+        print(1/fpr[goodIndices])
+        return (1/fpr[goodIndices])*qcd_ratio, tpr[goodIndices]*signal_ratio, a
 
 
     #If we are looking at QCD cut, then signal vs BIB roc curve
@@ -385,15 +388,15 @@ def evaluate_model(X_test, y_test, weights_test, mcWeights_test,  Z_test,  model
         print( "CONSTIT SIZE: " + str(X_test_constit[0].shape) )
 
         constit_input = Input(shape=(X_test_constit[0].shape),dtype='float32',name='constit_input')
-        constit_out = LSTM(num_constit_lstm, kernel_regularizer = L1L2(l1=reg_value, l2=reg_value))(constit_input)
+        constit_out = CuDNNLSTM(num_constit_lstm, kernel_regularizer = L1L2(l1=reg_value, l2=reg_value))(constit_input)
         constit_output = Dense(3, activation='softmax', name='constit_output')(constit_out)
 
         track_input = Input(shape=(X_test_track[0].shape),dtype='float32',name='track_input')
-        track_out = LSTM(num_track_lstm, kernel_regularizer = L1L2(l1=reg_value, l2=reg_value))(track_input)
+        track_out = CuDNNLSTM(num_track_lstm, kernel_regularizer = L1L2(l1=reg_value, l2=reg_value))(track_input)
         track_output = Dense(3, activation='softmax', name='track_output')(track_out)
 
         MSeg_input = Input(shape=(X_test_MSeg[0].shape),dtype='float32',name='MSeg_input')
-        MSeg_out = LSTM(num_mseg_lstm, kernel_regularizer = L1L2(l1=reg_value, l2=reg_value))(MSeg_input)
+        MSeg_out = CuDNNLSTM(num_mseg_lstm, kernel_regularizer = L1L2(l1=reg_value, l2=reg_value))(MSeg_input)
         MSeg_output = Dense(3, activation='softmax', name='MSeg_output')(MSeg_out)
 
         jet_input = Input(shape = X_test_jet.values[0].shape, name='jet_input')
@@ -530,15 +533,15 @@ def evaluate_model(X_test, y_test, weights_test, mcWeights_test,  Z_test,  model
     #    bbox=dict(facecolor='none', edgecolor='black', boxstyle='round,pad=1'))
 
     #Make plots of signal efficiency vs mH, mS
-    signal_llp_efficiencies(prediction,y_test,Z_test, destination,f)
 
     #Finish and plot ROC curve family
-    #Currently not workign for some reason
-    #TODO: Fix
     plt.legend()
     plt.yscale('log', nonposy='clip')
     signal_test = prediction[y_test==1]
     qcd_test = prediction[y_test==0]
+
+    signal_llp_efficiencies(prediction,y_test,Z_test, destination,f)
+
     print(signal_test[0:100].shape)
     print("Length of Signal: " + str(len(signal_test)) + ", length of signal with weight 1: " + str(len(signal_test[signal_test[:,1]<0.1])))
     print("Length of QCD: " + str(len(qcd_test)) + ", length of qcd with weight 1: " + str(len(qcd_test[qcd_test[:,1]<0.1])))

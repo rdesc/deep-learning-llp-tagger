@@ -3,6 +3,8 @@ import seaborn as sns
 
 import pandas as pd
 
+from evaluate_training import *
+
 
 import concurrent.futures
 import multiprocessing
@@ -103,7 +105,7 @@ def do_plotting_truth(signal,name,bins, signal_right, model_to_do):
     plot_truth_histos(signal_MSeg.values.flatten(),name,bins, signal_right, model_to_do)
 
 
-def plot_vars_final(file_name, model_to_do, doParametrization, deleteTime, doTrackLSTM = True, doMSegLSTM = True, num_max_constits=30, num_max_tracks=20, num_max_MSegs=70, num_constit_lstm=60, num_track_lstm=60, num_mseg_lstm=25, reg_value=0.001, dropout_value = 0.1):
+def plot_vars_final(file_name, model_to_do, doParametrization, deleteTime, doTrackLSTM = True, doMSegLSTM = True, num_max_constits=30, num_max_tracks=20, num_max_MSegs=70, num_constit_lstm=60, num_track_lstm=60, num_mseg_lstm=25, reg_value=0.001, dropout_value = 0.1, learning_rate = 0.002):
 
     df = pd.read_pickle(file_name)
     df = df.fillna(0)
@@ -136,16 +138,16 @@ def plot_vars_final(file_name, model_to_do, doParametrization, deleteTime, doTra
     del X['llp_mS']
     del X['llp_mH']
     del X['jet_isClean_LooseBadLLP']
-    #Z = df.loc[:,'llp_mH':'llp_mS']
-    Z = df.loc[:,'eventNumber':'runNumber']
-    Z = Z.join(df.loc[:,'jet_pt'])
+    Z = df.loc[:,'llp_mH':'llp_mS']
+    #Z = df.loc[:,'eventNumber':'runNumber']
+    #Z = Z.join(df.loc[:,'jet_pt'])
 
     
 
 
 
 
-    X_train, X_test, y_train, y_test, weights_train, weights_test, mcWeights_train, mcWeights_test,  Z_train, Z_test = train_test_split(X, Y, weights, mcWeights, Z, test_size = 0.99)
+    X_train, X_test, y_train, y_test, weights_train, weights_test, mcWeights_train, mcWeights_test,  Z_train, Z_test = train_test_split(X, Y, weights, mcWeights, Z, test_size = 0.2)
     del X_train
     del y_train
     del weights_train
@@ -156,7 +158,7 @@ def plot_vars_final(file_name, model_to_do, doParametrization, deleteTime, doTra
     del Z
 
 
-    X_test, X_val, y_test, y_val, weights_test, weights_val, mcWeights_test, mcWeights_val, Z_test, Z_val = train_test_split(X_test, y_test, weights_test, mcWeights_test,  Z_test, test_size = 0.99)
+    X_test, X_val, y_test, y_val, weights_test, weights_val, mcWeights_test, mcWeights_val, Z_test, Z_val = train_test_split(X_test, y_test, weights_test, mcWeights_test,  Z_test, test_size = 0.5)
 
     del X_test
     del y_test
@@ -203,7 +205,7 @@ def plot_vars_final(file_name, model_to_do, doParametrization, deleteTime, doTra
         X_val_jet = X_val_jet.join(Z_val)
 
     for i in range(0,num_max_constits):
-        temp_loc = X_val_constit.columns.get_loc('clus_phi_'+str(i))
+        temp_loc = X_val_constit.columns.get_loc('clusTime_'+str(i))
 
         X_val_constit.insert(temp_loc,'l4_hcal_'+str(i),X_val['l4_hcal_'+str(i)])
         X_val_constit.insert(temp_loc,'l3_hcal_'+str(i),X_val['l3_hcal_'+str(i)])
@@ -229,15 +231,15 @@ def plot_vars_final(file_name, model_to_do, doParametrization, deleteTime, doTra
 
 
     constit_input = Input(shape=(X_val_constit[0].shape),dtype='float32',name='constit_input')
-    constit_out = LSTM(num_constit_lstm, kernel_regularizer = L1L2(l1=reg_value, l2=reg_value))(constit_input)
+    constit_out = CuDNNLSTM(num_constit_lstm, kernel_regularizer = L1L2(l1=reg_value, l2=reg_value))(constit_input)
     constit_output = Dense(3, activation='softmax', name='constit_output')(constit_out)
 
     track_input = Input(shape=(X_val_track[0].shape),dtype='float32',name='track_input')
-    track_out = LSTM(num_track_lstm, kernel_regularizer = L1L2(l1=reg_value, l2=reg_value))(track_input)
+    track_out = CuDNNLSTM(num_track_lstm, kernel_regularizer = L1L2(l1=reg_value, l2=reg_value))(track_input)
     track_output = Dense(3, activation='softmax', name='track_output')(track_out)
 
     MSeg_input = Input(shape=(X_val_MSeg[0].shape),dtype='float32',name='MSeg_input')
-    MSeg_out = LSTM(num_mseg_lstm, kernel_regularizer = L1L2(l1=reg_value, l2=reg_value))(MSeg_input)
+    MSeg_out = CuDNNLSTM(num_mseg_lstm, kernel_regularizer = L1L2(l1=reg_value, l2=reg_value))(MSeg_input)
     MSeg_output = Dense(3, activation='softmax', name='MSeg_output')(MSeg_out)
 
     jet_input = Input(shape = X_val_jet.values[0].shape, name='jet_input')
@@ -298,7 +300,8 @@ def plot_vars_final(file_name, model_to_do, doParametrization, deleteTime, doTra
 
 
     #rmsprop = keras.optimizers.RMSprop(lr=learning_rate, rho=0.9, epsilon=None, decay=0.0)
-    model.compile(optimizer='Adam', loss='categorical_crossentropy',
+    opt = keras.optimizers.Nadam(lr=learning_rate, beta_1=0.9, beta_2=0.999, epsilon=None, schedule_decay=0.004)
+    model.compile(optimizer=opt, loss='categorical_crossentropy',
         loss_weights=weights_for_loss, metrics=['accuracy'])
     model.load_weights("keras_outputs/"+model_to_do+'/checkpoint')
 
@@ -318,6 +321,86 @@ def plot_vars_final(file_name, model_to_do, doParametrization, deleteTime, doTra
         validation_prediction = prediction
         prediction = prediction[0]
 
+    #Sum of MC weights
+    bib_weight = np.sum(mcWeights_val[y_val==2])
+    sig_weight = np.sum(mcWeights_val[y_val==1])
+    qcd_weight = np.sum(mcWeights_val[y_val==0])
+
+    bib_weight_length = len(mcWeights_val[y_val==2])
+    sig_weight_length = len(mcWeights_val[y_val==1])
+    qcd_weight_length = len(mcWeights_val[y_val==0])
+
+    mcWeights_val[y_val==0] *= qcd_weight_length/qcd_weight
+    mcWeights_val[y_val==2] *= bib_weight_length/bib_weight
+    mcWeights_val[y_val==1] *= sig_weight_length/sig_weight
+    destination = "plots/"+model_to_do + "/"
+    plot_prediction_histograms(destination,prediction,y_val, mcWeights_val, model_to_do)
+    #threshold_array = np.logspace(-0.1,-0.001,30)[::-3]
+    #This will be the BIB efficiencies to aim for when making family of ROC curves
+    threshold_array = [0.9999,(1-0.001),(1-0.003),(1-0.009),(1-0.023),(1-0.059),(1-0.151),(1-0.389),0.001]
+    #threshold_array = [0.995,(1-0.009),(1-0.023),(1-0.059),(1-0.151),(1-0.389),0.001]
+    counter=0
+    #Third label: the label of the class we are doing a 'family' of. Other two classes will make the ROC curve
+    third_label=2
+    #We'll be writing the stats to training_details.txt
+    f = open(destination+"training_details_post.txt","a")
+
+
+    #threshold_array = [0.99,(1-0.03),(1-0.09),(1-0.23),(1-0.59),0.001]
+    #threshold_array =  np.logspace(-4,0,30)[::-3]
+    #for percent in range(0,100,10):
+
+    plt.clf()
+    plt.xlabel("LLP Tagging Efficiency")
+
+    #Loop over all arrays in threshold_array
+    for item in threshold_array:
+        #Convert decimal to percentage (code used was in percentage, oh well)
+        test_perc = item*100
+        test_label = third_label
+        #print(prediction.shape)
+        #print(y_predictions.shape)
+
+        #Find threshold, or at what label we will have the required percentage of 'test_label' correctl predicted
+        test_threshold, leftovers = find_threshold(prediction,y_val, mcWeights_val, test_perc, test_label)
+        #Make ROC curve of leftovers, those not tagged by above function
+        bkg_eff, tag_eff, roc_auc = make_multi_roc_curve(prediction,y_val,mcWeights_val,test_threshold,test_label,leftovers)
+        #Write AUC to training_details.txt
+        f.write("%s, %s\n" % (str(-item+1), str(roc_auc)) )
+        print("AUC: " + str(roc_auc) )
+        #Make ROC curve
+        print(np.amax(bkg_eff))
+        print(np.amin(bkg_eff))
+        plt.plot(tag_eff, bkg_eff, label= f"BIB Eff: {(-item+1):.3f}" +f", AUC: {roc_auc:.3f}")
+        #axes = plt.gca()
+        #axes.set_xlim([0,1])
+        counter=counter+1
+#Make plots of signal efficiency vs mH, mS
+
+    #Finish and plot ROC curve family
+    #Currently not workign for some reason
+    #TODO: Fix
+    plt.legend()
+    plt.yscale('log', nonposy='clip')
+    signal_val = prediction[y_val==1]
+    qcd_val = prediction[y_val==0]
+    print(signal_val[0:100].shape)
+    print("Length of Signal: " + str(len(signal_val)) + ", length of signal with weight 1: " + str(len(signal_val[signal_val[:,1]<0.1])))
+    print("Length of QCD: " + str(len(qcd_val)) + ", length of qcd with weight 1: " + str(len(qcd_val[qcd_val[:,1]<0.1])))
+    if third_label == 2:
+        plt.ylabel("QCD Rejection")
+        plt.savefig(destination + "roc_curve_atlas_rej_bib_post" + ".pdf", format='pdf', transparent=True)
+    if third_label == 0:
+        plt.ylabel("BIB Rejection")
+        plt.savefig(destination + "roc_curve_atlas_rej_qcd_post" + ".pdf", format='pdf', transparent=True)
+    plt.clf()
+    plt.cla()
+
+    signal_llp_efficiencies(prediction,y_val,Z_val, destination,f)
+
+    f.close()
+
+    '''
     f = open("keras_validation_sep17.txt","w+")
 
 
@@ -326,6 +409,7 @@ def plot_vars_final(file_name, model_to_do, doParametrization, deleteTime, doTra
 
 
     f.close()
+    '''
 
     '''
     f_clus = open("clus_keras_validation.txt","w+")
@@ -341,6 +425,7 @@ def plot_vars_final(file_name, model_to_do, doParametrization, deleteTime, doTra
     f_clus.close()
     '''
 
+    '''
     f_mseg = open("mseg_keras_validation.txt","w+")
 
     print(X_val_mseg_copy)
@@ -351,6 +436,7 @@ def plot_vars_final(file_name, model_to_do, doParametrization, deleteTime, doTra
 
 
     f_mseg.close()
+    '''
 
 
     signal_right_1 = prediction[:,1] > prediction[:,0]# and prediction[:,1] > prediction[:,2]
