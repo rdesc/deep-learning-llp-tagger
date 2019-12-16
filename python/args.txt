@@ -1,3 +1,3 @@
---file_name=/fast_scratch/fcormier/calRatio/noMsegOrder/processed_output.pkl
---finalPlots_model=lstm_validationTest_fracEvents_0.4_constits_30_tracks_20_MSegs_70_LSTMconstits_60_LSTMtracks_60_LSTMmseg_25_kernelReg_0.001_epochs_50_dropout_0.1_doTrackLSTM_True_doMSegLSTM_True_2019-09-19_14:27:35/
+--file_name=/fast_scratch/fcormier/calRatio/fullSignal_withID/
+--finalPlots_model=lstm_validationTest_fracEvents_0.4_constits_30_tracks_20_MSegs_70_LSTMconstits_60_LSTMtracks_60_LSTMmseg_25_kernelReg_0.001_epochs_3_dropout_0.1_doTrackLSTM_True_doMSegLSTM_True_2019-10-22_16:51:33/
 --doTraining

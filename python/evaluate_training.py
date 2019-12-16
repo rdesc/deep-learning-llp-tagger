@@ -33,6 +33,8 @@ from keras.utils import np_utils
 from matplotlib.offsetbox import AnchoredText
 from mpl_toolkits.mplot3d import Axes3D
 
+from make_final_plots import *
+
 
 
 import sys
@@ -307,7 +309,7 @@ def plot_prediction_histograms(destination,
     plt.clf()
     return
 
-def evaluate_model(X_test, y_test, weights_test, mcWeights_test,  Z_test,  model_to_do, deleteTime, num_constit_lstm, num_track_lstm, num_mseg_lstm, reg_value, doTrackLSTM, doMSegLSTM, doParametrization, learning_rate):
+def evaluate_model(X_test, y_test, weights_test, mcWeights_test,  Z_test,  model_to_do, deleteTime, num_constit_lstm, num_track_lstm, num_mseg_lstm, reg_value, doTrackLSTM, doMSegLSTM, doParametrization, learning_rate, numConstitLayers, numTrackLayers, numMSegLayers):
 
     #Easy set up of dense model
     #Unfortunately have to hard code architecture for now
@@ -344,40 +346,29 @@ def evaluate_model(X_test, y_test, weights_test, mcWeights_test,  Z_test,  model
         num_constit_vars = 12
         if deleteTime == True:
             num_constit_vars = 11
-        num_track_vars = 12
-        num_MSeg_vars = 5
+        num_track_vars = 13
+        num_MSeg_vars = 6
         if deleteTime == True:
-            num_MSeg_vars = 4
+            num_MSeg_vars = 5
 
 
         num_max_constits = 30
         num_max_tracks = 20
-        num_max_MSegs = 70
+        num_max_MSegs = 30
 
         if deleteTime:
-            X_test_constit = X_test.loc[:,'clus_pt_0':'clus_phi_29']
+            X_test_constit = X_test.loc[:,'clus_pt_0':'clus_phi_'+str(num_max_constits-1)]
         else:
-            X_test_constit = X_test.loc[:,'clus_pt_0':'clusTime_29']
-        X_test_track = X_test.loc[:,'nn_track_pt_0':'nn_track_SCTHits_19']
+            X_test_constit = X_test.loc[:,'clus_pt_0':'clus_time_'+str(num_max_constits-1)]
+        X_test_track = X_test.loc[:,'nn_track_pt_0':'nn_track_SCTHits_'+str(num_max_tracks-1)]
         if deleteTime:
-            X_test_MSeg = X_test.loc[:,'nn_MSeg_etaPos_0':'nn_MSeg_phiDir_69']
+            X_test_MSeg = X_test.loc[:,'nn_MSeg_etaPos_0':'nn_MSeg_phiDir_'+str(num_max_MSegs-1)]
         else:
-            X_test_MSeg = X_test.loc[:,'nn_MSeg_etaPos_0':'nn_MSeg_t0_69']
+            X_test_MSeg = X_test.loc[:,'nn_MSeg_etaPos_0':'nn_MSeg_t0_'+str(num_max_MSegs-1)]
         X_test_jet = X_test.loc[:,'jet_pt':'jet_phi']
         if doParametrization:
             X_test_jet = X_test_jet.join(Z_test)
 
-        for i in range(0,num_max_constits):
-            temp_loc = X_test_constit.columns.get_loc('clusTime_'+str(i))
-
-            X_test_constit.insert(temp_loc,'l4_hcal_'+str(i),X_test['l4_hcal_'+str(i)])
-            X_test_constit.insert(temp_loc,'l3_hcal_'+str(i),X_test['l3_hcal_'+str(i)])
-            X_test_constit.insert(temp_loc,'l2_hcal_'+str(i),X_test['l2_hcal_'+str(i)])
-            X_test_constit.insert(temp_loc,'l1_hcal_'+str(i),X_test['l1_hcal_'+str(i)])
-            X_test_constit.insert(temp_loc,'l4_ecal_'+str(i),X_test['l4_ecal_'+str(i)])
-            X_test_constit.insert(temp_loc,'l3_ecal_'+str(i),X_test['l3_ecal_'+str(i)])
-            X_test_constit.insert(temp_loc,'l2_ecal_'+str(i),X_test['l2_ecal_'+str(i)])
-            X_test_constit.insert(temp_loc,'l1_ecal_'+str(i),X_test['l1_ecal_'+str(i)])
 
 
         X_test_constit = X_test_constit.values.reshape(X_test_constit.shape[0],num_max_constits,num_constit_vars)
@@ -388,15 +379,40 @@ def evaluate_model(X_test, y_test, weights_test, mcWeights_test,  Z_test,  model
         print( "CONSTIT SIZE: " + str(X_test_constit[0].shape) )
 
         constit_input = Input(shape=(X_test_constit[0].shape),dtype='float32',name='constit_input')
-        constit_out = CuDNNLSTM(num_constit_lstm, kernel_regularizer = L1L2(l1=reg_value, l2=reg_value))(constit_input)
+        #constit_out = CuDNNLSTM(num_constit_lstm, kernel_regularizer = L1L2(l1=reg_value, l2=reg_value))(constit_input)
+        if numConstitLayers > 1:
+            constit_out = CuDNNLSTM(num_constit_lstm, kernel_regularizer = L1L2(l1=reg_value, l2=reg_value), return_sequences = True)(constit_input)
+        else:
+            constit_out = CuDNNLSTM(num_constit_lstm, kernel_regularizer = L1L2(l1=reg_value, l2=reg_value))(constit_input)
+        for i in range(1,int(numConstitLayers)):
+            if i < int(numConstitLayers)-1:
+                constit_out = CuDNNLSTM(num_constit_lstm, kernel_regularizer = L1L2(l1=reg_value, l2=reg_value), return_sequences = True)(constit_out)
+            else:
+                constit_out = CuDNNLSTM(num_constit_lstm, kernel_regularizer = L1L2(l1=reg_value, l2=reg_value))(constit_out)
         constit_output = Dense(3, activation='softmax', name='constit_output')(constit_out)
 
         track_input = Input(shape=(X_test_track[0].shape),dtype='float32',name='track_input')
-        track_out = CuDNNLSTM(num_track_lstm, kernel_regularizer = L1L2(l1=reg_value, l2=reg_value))(track_input)
+        if numTrackLayers > 1:
+            track_out = CuDNNLSTM(num_track_lstm, kernel_regularizer = L1L2(l1=reg_value, l2=reg_value), return_sequences = True)(track_input)
+        else:
+            track_out = CuDNNLSTM(num_track_lstm, kernel_regularizer = L1L2(l1=reg_value, l2=reg_value))(track_input)
+        for i in range(1,int(numTrackLayers)):
+            if i < int(numTrackLayers)-1:
+                track_out = CuDNNLSTM(num_track_lstm, kernel_regularizer = L1L2(l1=reg_value, l2=reg_value), return_sequences = True)(track_out)
+            else:
+                track_out = CuDNNLSTM(num_track_lstm, kernel_regularizer = L1L2(l1=reg_value, l2=reg_value))(track_out)
         track_output = Dense(3, activation='softmax', name='track_output')(track_out)
 
         MSeg_input = Input(shape=(X_test_MSeg[0].shape),dtype='float32',name='MSeg_input')
-        MSeg_out = CuDNNLSTM(num_mseg_lstm, kernel_regularizer = L1L2(l1=reg_value, l2=reg_value))(MSeg_input)
+        if numMSegLayers > 1:
+            MSeg_out = CuDNNLSTM(num_mseg_lstm, kernel_regularizer = L1L2(l1=reg_value, l2=reg_value), return_sequences = True)(MSeg_input)
+        else:
+            MSeg_out = CuDNNLSTM(num_mseg_lstm, kernel_regularizer = L1L2(l1=reg_value, l2=reg_value))(MSeg_input)
+        for i in range(1,int(numMSegLayers)):
+            if i < int(numMSegLayers)-1:
+                MSeg_out = CuDNNLSTM(num_mseg_lstm, kernel_regularizer = L1L2(l1=reg_value, l2=reg_value), return_sequences = True)(MSeg_out)
+            else:
+                MSeg_out = CuDNNLSTM(num_mseg_lstm, kernel_regularizer = L1L2(l1=reg_value, l2=reg_value))(MSeg_out)
         MSeg_output = Dense(3, activation='softmax', name='MSeg_output')(MSeg_out)
 
         jet_input = Input(shape = X_test_jet.values[0].shape, name='jet_input')
@@ -532,7 +548,6 @@ def evaluate_model(X_test, y_test, weights_test, mcWeights_test,  Z_test,  model
     #ax.text(0.05, 0.8, textstr, color='black', transform=ax.transAxes, 
     #    bbox=dict(facecolor='none', edgecolor='black', boxstyle='round,pad=1'))
 
-    #Make plots of signal efficiency vs mH, mS
 
     #Finish and plot ROC curve family
     plt.legend()
@@ -540,7 +555,6 @@ def evaluate_model(X_test, y_test, weights_test, mcWeights_test,  Z_test,  model
     signal_test = prediction[y_test==1]
     qcd_test = prediction[y_test==0]
 
-    signal_llp_efficiencies(prediction,y_test,Z_test, destination,f)
 
     print(signal_test[0:100].shape)
     print("Length of Signal: " + str(len(signal_test)) + ", length of signal with weight 1: " + str(len(signal_test[signal_test[:,1]<0.1])))
@@ -553,8 +567,10 @@ def evaluate_model(X_test, y_test, weights_test, mcWeights_test,  Z_test,  model
         plt.savefig(destination + "roc_curve_atlas_rej_qcd" + ".pdf", format='pdf', transparent=True)
     plt.clf()
     plt.cla()
+    #Make plots of signal efficiency vs mH, mS
+    signal_llp_efficiencies(prediction,y_test,Z_test, destination,f)
     f.close()
-    #plot_vars_final(X_test, y_test, prediction, mcWeights_test)
+    #plot_vars_final(X_test, y_test, weights_test, mcWeights_test, Z_test, model_to_do, deleteTime, num_constit_lstm, num_track_lstm, num_mseg_lstm, reg_value, doTrackLSTM, doMSegLSTM, doParametrization, learning_rate)
 
 
 

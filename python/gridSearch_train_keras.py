@@ -63,14 +63,14 @@ doMSegLSTM: whether or not to run muon segment LSTM
 doParametrization: whether to include mH and mS truth variables in training to enable parametrized training
 learning_rate: Starting learning rate for training
 '''
-def train_llp( filename, frac = 1.0, num_max_constits=30, num_max_tracks=20, num_max_MSegs=70, num_constit_lstm=60, num_track_lstm=60, num_mseg_lstm=25, reg_value=0.001, dropout_value = 0.1,  epochs = 50, model_to_do = "lstm_test" , doTrackLSTM = True, doMSegLSTM = True, doParametrization = False, learning_rate = 0.002):
+def train_llp( filename, frac = 1.0, num_max_constits=30, num_max_tracks=20, num_max_MSegs=30, num_constit_lstm=60, num_track_lstm=60, num_mseg_lstm=25, reg_value=0.001, dropout_value = 0.1,  epochs = 50, model_to_do = "lstm_test" , doTrackLSTM = True, doMSegLSTM = True, doParametrization = False, learning_rate = 0.002, numConstitLayers = 1, numTrackLayers = 1, numMSegLayers = 1):
 
     #name, filename, frac, num_max_constits, num_max_tracks, num_max_MSegs, num_constit_lstm, num_track_lstm, num_mseg_lstm, reg_value, model_to_do = sys.argv
 
     #Create a string which will be the name of the model
     #We will use this as directory name to save plots and save the model
     creation_time = str(datetime.now().strftime('%Y-%m-%d_%H:%M:%S/'))
-    model_to_do = model_to_do+"_fracEvents_" + str(frac) + "_constits_" + str(num_max_constits) + "_tracks_" + str(num_max_tracks) + "_MSegs_" + str(num_max_MSegs) + "_LSTMconstits_" + str(num_constit_lstm) + "_LSTMtracks_" + str(num_track_lstm) + "_LSTMmseg_" + str(num_mseg_lstm) + "_kernelReg_" + str(reg_value) + "_epochs_" + str(epochs) + "_dropout_" + str(dropout_value) + "_doTrackLSTM_" + str(doTrackLSTM) + "_doMSegLSTM_" + str(doMSegLSTM) + "_" + creation_time
+    model_to_do = model_to_do+"_fracEvents_" + creation_time
 
     #Make directory
     dirName = "plots/" + model_to_do
@@ -97,7 +97,7 @@ def train_llp( filename, frac = 1.0, num_max_constits=30, num_max_tracks=20, num
     destination = "plots/"+model_to_do + "/"
     #Write a file with some details of architecture, will append final stats at end of training
     f = open(destination+"training_details.txt","w+")
-    f.write("%s,%s,%s,%s,%s,%s,%s,%s\n" % (frac, num_max_constits, num_max_tracks, num_max_MSegs, num_constit_lstm, num_track_lstm, num_mseg_lstm, learning_rate) )
+    f.write("%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n" % (frac, num_max_constits, num_max_tracks, num_max_MSegs, num_constit_lstm, num_track_lstm, num_mseg_lstm, learning_rate, reg_value, dropout_value, epochs, doTrackLSTM, doMSegLSTM, doParametrization, learning_rate, numConstitLayers, numTrackLayers, numMSegLayers) )
     f.close()
 
     #Convert inputs to correct type
@@ -109,6 +109,7 @@ def train_llp( filename, frac = 1.0, num_max_constits=30, num_max_tracks=20, num
     num_constit_lstm = int(num_constit_lstm)
     num_track_lstm = int(num_track_lstm)
     num_mseg_lstm = int(num_mseg_lstm)
+    numConstitLayers = int(numConstitLayers)
     print(model_to_do)
     learning_rate = float(learning_rate)
 
@@ -132,9 +133,11 @@ def train_llp( filename, frac = 1.0, num_max_constits=30, num_max_tracks=20, num
     del df['clus_sign']
     
     #I labelled all truth variables (except parametrization) with aux_*, so remove all those!!!
+    '''
     auxDelete = [col for col in df if col.startswith("aux")]
     for item in auxDelete:
         del df[item]
+    '''
     
     #TODO: not leave hardcoded
     #Decides if time is a variable or not
@@ -142,13 +145,23 @@ def train_llp( filename, frac = 1.0, num_max_constits=30, num_max_tracks=20, num
     
     #Delete time variable for clusters and muon segments
     if deleteTime:
-        clusTimeDelete = [col for col in df if col.startswith("clusTime")]
-        for item in clusTimeDelete:
+        clus_timeDelete = [col for col in df if col.startswith("clus_time")]
+        for item in clus_timeDelete:
             del df[item]
     
         segTimeDelete = [col for col in df  if col.startswith("nn_MSeg_t0")]
         for item in segTimeDelete:
             del df[item]
+
+    vertex_delete_x = [col for col in df if col.startswith("nn_track_vertex_x")]
+    for item in vertex_delete_x:
+        del df[item]
+    vertex_delete_y = [col for col in df if col.startswith("nn_track_vertex_y")]
+    for item in vertex_delete_y:
+        del df[item]
+    vertex_delete_z = [col for col in df if col.startswith("nn_track_vertex_z")]
+    for item in vertex_delete_z:
+        del df[item]
     
     print("Length of Signal is: " + str(df[df.label==1].shape[0]) )
     print("Length of QCD is: " + str(df[df.label==0].shape[0]) )
@@ -162,7 +175,7 @@ def train_llp( filename, frac = 1.0, num_max_constits=30, num_max_tracks=20, num
     #Keep mcWeights for evaluation
     mcWeights = df['mcEventWeight']
     #Hard code start and end of names of variables
-    X= df.loc[:,'jet_pt':'l4_hcal_29']
+    X= df.loc[:,'jet_pt':'nn_MSeg_t0_29']
     #TODO: have true/false input to decide if we are deleting input parametrized variables
     del X['llp_mS']
     del X['llp_mH']
@@ -204,10 +217,10 @@ def train_llp( filename, frac = 1.0, num_max_constits=30, num_max_tracks=20, num
         num_constit_vars = 12
         if deleteTime == True:
             num_constit_vars = 11
-        num_track_vars = 12
-        num_MSeg_vars = 5
+        num_track_vars = 13
+        num_MSeg_vars = 6
         if deleteTime == True:
-            num_MSeg_vars = 4
+            num_MSeg_vars = 5
         
         num_jet_vars = 3
         
@@ -216,13 +229,13 @@ def train_llp( filename, frac = 1.0, num_max_constits=30, num_max_tracks=20, num
         #This just chooses the appropriate columns
         #Dependent on correct ordering when extracting and pre-processing!
         if deleteTime:
-            X_train_constit = X_train.loc[:,'clus_pt_0':'clus_phi_'+str(num_max_constits-1)]
+            X_train_constit = X_train.loc[:,'clus_pt_0':'clus_l4hcal_'+str(num_max_constits-1)]
         else:
-            X_train_constit = X_train.loc[:,'clus_pt_0':'clusTime_'+str(num_max_constits-1)]
+            X_train_constit = X_train.loc[:,'clus_pt_0':'clus_time_'+str(num_max_constits-1)]
         
         X_train_track = X_train.loc[:,'nn_track_pt_0':'nn_track_SCTHits_'+str(num_max_tracks-1)]
         if deleteTime:
-            X_train_MSeg = X_train.loc[:,'nn_MSeg_etaPos_0':'nn_MSeg_phiDir_'+str(num_max_MSegs-1)]
+            X_train_MSeg = X_train.loc[:,'nn_MSeg_etaPos_0':'nn_MSeg_chiSquared_'+str(num_max_MSegs-1)]
         else:
             X_train_MSeg = X_train.loc[:,'nn_MSeg_etaPos_0':'nn_MSeg_t0_'+str(num_max_MSegs-1)]
         X_train_jet = X_train.loc[:,'jet_pt':'jet_phi']
@@ -236,12 +249,12 @@ def train_llp( filename, frac = 1.0, num_max_constits=30, num_max_tracks=20, num
 
         #Does same constructing for test dataset
         if deleteTime:
-            X_test_constit = X_test.loc[:,'clus_pt_0':'clus_phi_'+str(num_max_constits-1)]
+            X_test_constit = X_test.loc[:,'clus_pt_0':'clus_l4hcal_'+str(num_max_constits-1)]
         else:
-            X_test_constit = X_test.loc[:,'clus_pt_0':'clusTime_'+str(num_max_constits-1)]
+            X_test_constit = X_test.loc[:,'clus_pt_0':'clus_time_'+str(num_max_constits-1)]
         X_test_track = X_test.loc[:,'nn_track_pt_0':'nn_track_SCTHits_'+str(num_max_tracks-1)]
         if deleteTime:
-            X_test_MSeg = X_test.loc[:,'nn_MSeg_etaPos_0':'nn_MSeg_phiDir_'+str(num_max_MSegs-1)]
+            X_test_MSeg = X_test.loc[:,'nn_MSeg_etaPos_0':'nn_MSeg_chiSquared_'+str(num_max_MSegs-1)]
         else:
             X_test_MSeg = X_test.loc[:,'nn_MSeg_etaPos_0':'nn_MSeg_t0_'+str(num_max_MSegs-1)]
         X_test_jet = X_test.loc[:,'jet_pt':'jet_phi']
@@ -250,12 +263,12 @@ def train_llp( filename, frac = 1.0, num_max_constits=30, num_max_tracks=20, num
         
         #Does same constructing for validation dataset
         if deleteTime:
-            X_val_constit = X_val.loc[:,'clus_pt_0':'clus_phi_'+str(num_max_constits-1)]
+            X_val_constit = X_val.loc[:,'clus_pt_0':'clus_l4hcal_'+str(num_max_constits-1)]
         else:
-            X_val_constit = X_val.loc[:,'clus_pt_0':'clusTime_'+str(num_max_constits-1)]
+            X_val_constit = X_val.loc[:,'clus_pt_0':'clus_time_'+str(num_max_constits-1)]
         X_val_track = X_val.loc[:,'nn_track_pt_0':'nn_track_SCTHits_'+str(num_max_tracks-1)]
         if deleteTime:
-            X_val_MSeg = X_val.loc[:,'nn_MSeg_etaPos_0':'nn_MSeg_phiDir_'+str(num_max_MSegs-1)]
+            X_val_MSeg = X_val.loc[:,'nn_MSeg_etaPos_0':'nn_MSeg_chiSquared_'+str(num_max_MSegs-1)]
         else:
             X_val_MSeg = X_val.loc[:,'nn_MSeg_etaPos_0':'nn_MSeg_t0_'+str(num_max_MSegs-1)]
         X_val_jet = X_val.loc[:,'jet_pt':'jet_phi']
@@ -263,37 +276,6 @@ def train_llp( filename, frac = 1.0, num_max_constits=30, num_max_tracks=20, num
             X_val_jet= X_val_jet.join(Z_val)
 
         
-        #Add the layering constituent information calcualted during pre-processing to right place in constituent dataFrame
-        #TODO: move to pre-processing
-        for i in range(0,num_max_constits):
-            temp_loc = X_train_constit.columns.get_loc('clusTime_'+str(i))
-            
-            X_train_constit.insert(temp_loc,'l4_hcal_'+str(i),X_train['l4_hcal_'+str(i)])
-            X_train_constit.insert(temp_loc,'l3_hcal_'+str(i),X_train['l3_hcal_'+str(i)])
-            X_train_constit.insert(temp_loc,'l2_hcal_'+str(i),X_train['l2_hcal_'+str(i)])
-            X_train_constit.insert(temp_loc,'l1_hcal_'+str(i),X_train['l1_hcal_'+str(i)])
-            X_train_constit.insert(temp_loc,'l4_ecal_'+str(i),X_train['l4_ecal_'+str(i)])
-            X_train_constit.insert(temp_loc,'l3_ecal_'+str(i),X_train['l3_ecal_'+str(i)])
-            X_train_constit.insert(temp_loc,'l2_ecal_'+str(i),X_train['l2_ecal_'+str(i)])
-            X_train_constit.insert(temp_loc,'l1_ecal_'+str(i),X_train['l1_ecal_'+str(i)])
-            
-            X_test_constit.insert(temp_loc,'l4_hcal_'+str(i),X_test['l4_hcal_'+str(i)])
-            X_test_constit.insert(temp_loc,'l3_hcal_'+str(i),X_test['l3_hcal_'+str(i)])
-            X_test_constit.insert(temp_loc,'l2_hcal_'+str(i),X_test['l2_hcal_'+str(i)])
-            X_test_constit.insert(temp_loc,'l1_hcal_'+str(i),X_test['l1_hcal_'+str(i)])
-            X_test_constit.insert(temp_loc,'l4_ecal_'+str(i),X_test['l4_ecal_'+str(i)])
-            X_test_constit.insert(temp_loc,'l3_ecal_'+str(i),X_test['l3_ecal_'+str(i)])
-            X_test_constit.insert(temp_loc,'l2_ecal_'+str(i),X_test['l2_ecal_'+str(i)])
-            X_test_constit.insert(temp_loc,'l1_ecal_'+str(i),X_test['l1_ecal_'+str(i)])
-            
-            X_val_constit.insert(temp_loc,'l4_hcal_'+str(i),X_val['l4_hcal_'+str(i)])
-            X_val_constit.insert(temp_loc,'l3_hcal_'+str(i),X_val['l3_hcal_'+str(i)])
-            X_val_constit.insert(temp_loc,'l2_hcal_'+str(i),X_val['l2_hcal_'+str(i)])
-            X_val_constit.insert(temp_loc,'l1_hcal_'+str(i),X_val['l1_hcal_'+str(i)])
-            X_val_constit.insert(temp_loc,'l4_ecal_'+str(i),X_val['l4_ecal_'+str(i)])
-            X_val_constit.insert(temp_loc,'l3_ecal_'+str(i),X_val['l3_ecal_'+str(i)])
-            X_val_constit.insert(temp_loc,'l2_ecal_'+str(i),X_val['l2_ecal_'+str(i)])
-            X_val_constit.insert(temp_loc,'l1_ecal_'+str(i),X_val['l1_ecal_'+str(i)])
         
         #Reshape the dataFrames into the shape expected by keras
         #This is an ordered array, so each input is formatted as number of constituents x number of variables
@@ -314,7 +296,16 @@ def train_llp( filename, frac = 1.0, num_max_constits=30, num_max_tracks=20, num
         #Need to tell network shape of input for jet constituents
         constit_input = Input(shape=(X_train_constit[0].shape),dtype='float32',name='constit_input')
         #Have one LSTM layer, with regularizer, tied to input node
-        constit_out = CuDNNLSTM(num_constit_lstm, kernel_regularizer = L1L2(l1=reg_value, l2=reg_value))(constit_input)
+        #constit_out = CuDNNLSTM(num_constit_lstm, kernel_regularizer = L1L2(l1=reg_value, l2=reg_value))(constit_input)
+        if numConstitLayers > 1:
+            constit_out = CuDNNLSTM(num_constit_lstm, kernel_regularizer = L1L2(l1=reg_value, l2=reg_value), return_sequences = True)(constit_input)
+        else:
+            constit_out = CuDNNLSTM(num_constit_lstm, kernel_regularizer = L1L2(l1=reg_value, l2=reg_value))(constit_input)
+        for i in range(1,int(numConstitLayers)):
+            if i < int(numConstitLayers)-1:
+                constit_out = CuDNNLSTM(num_constit_lstm, kernel_regularizer = L1L2(l1=reg_value, l2=reg_value), return_sequences = True)(constit_out)
+            else:
+                constit_out = CuDNNLSTM(num_constit_lstm, kernel_regularizer = L1L2(l1=reg_value, l2=reg_value))(constit_out)
         #Have a constit LSTM output, which does the classification using only constituents.
         #This lets you monitor how the consituent LSTM is doing, but is not used for anything else
         constit_output = Dense(3, activation='softmax', name='constit_output')(constit_out)
@@ -322,7 +313,15 @@ def train_llp( filename, frac = 1.0, num_max_constits=30, num_max_tracks=20, num
         #Need to tell network shape of input for tracks
         track_input = Input(shape=(X_train_track[0].shape),dtype='float32',name='track_input')
         #Have one LSTM layer, with regularizer, tied to input node
-        track_out = CuDNNLSTM(num_track_lstm , kernel_regularizer = L1L2(l1=reg_value, l2=reg_value))(track_input)
+        if numTrackLayers > 1:
+            track_out = CuDNNLSTM(num_track_lstm, kernel_regularizer = L1L2(l1=reg_value, l2=reg_value), return_sequences = True)(track_input)
+        else:
+            track_out = CuDNNLSTM(num_track_lstm, kernel_regularizer = L1L2(l1=reg_value, l2=reg_value))(track_input)
+        for i in range(1,int(numTrackLayers)):
+            if i < int(numTrackLayers)-1:
+                track_out = CuDNNLSTM(num_track_lstm, kernel_regularizer = L1L2(l1=reg_value, l2=reg_value), return_sequences = True)(track_out)
+            else:
+                track_out = CuDNNLSTM(num_track_lstm, kernel_regularizer = L1L2(l1=reg_value, l2=reg_value))(track_out)
         #Have a track LSTM output, which does the classification using only tracks.
         #This lets you monitor how the track LSTM is doing, but is not used for anything else
         track_output = Dense(3, activation='softmax', name='track_output')(track_out)
@@ -330,7 +329,15 @@ def train_llp( filename, frac = 1.0, num_max_constits=30, num_max_tracks=20, num
         #Need to tell network shape of input for muon segments
         MSeg_input = Input(shape=(X_train_MSeg[0].shape),dtype='float32',name='MSeg_input')
         #Have one LSTM layer, with regularizer, tied to input node
-        MSeg_out = CuDNNLSTM(num_mseg_lstm, kernel_regularizer = L1L2(l1=reg_value, l2=reg_value))(MSeg_input)
+        if numMSegLayers > 1:
+            MSeg_out = CuDNNLSTM(num_mseg_lstm, kernel_regularizer = L1L2(l1=reg_value, l2=reg_value), return_sequences = True)(MSeg_input)
+        else:
+            MSeg_out = CuDNNLSTM(num_mseg_lstm, kernel_regularizer = L1L2(l1=reg_value, l2=reg_value))(MSeg_input)
+        for i in range(1,int(numMSegLayers)):
+            if i < int(numMSegLayers)-1:
+                MSeg_out = CuDNNLSTM(num_mseg_lstm, kernel_regularizer = L1L2(l1=reg_value, l2=reg_value), return_sequences = True)(MSeg_out)
+            else:
+                MSeg_out = CuDNNLSTM(num_mseg_lstm, kernel_regularizer = L1L2(l1=reg_value, l2=reg_value))(MSeg_out)
         #Have a muon segment LSTM output, which does the classification using only muon segments.
         #This lets you monitor how the muon segment LSTM is doing, but is not used for anything else
         MSeg_output = Dense(3, activation='softmax', name='MSeg_output')(MSeg_out)
@@ -425,7 +432,7 @@ def train_llp( filename, frac = 1.0, num_max_constits=30, num_max_tracks=20, num
         #Do the training, save it to history for plots
         #Batch size hardcoded to 512, NOT optimised
         #Has EarlyStopping module, if variable under monitor has not gotten better after <patience> epochs, stop, keep best at directory under ModelCheckpoint
-        history = model.fit(x_to_train, y_to_train, sample_weight= weights_to_train, epochs=epochs, batch_size=512, validation_data = (x_to_validate, y_to_validate, weights_to_validate),callbacks=[
+        history = model.fit(x_to_train, y_to_train, sample_weight= weights_to_train, epochs=epochs, batch_size=1024, validation_data = (x_to_validate, y_to_validate, weights_to_validate),callbacks=[
         EarlyStopping(
         verbose=True,
         patience=10,
@@ -460,7 +467,7 @@ def train_llp( filename, frac = 1.0, num_max_constits=30, num_max_tracks=20, num
         plt.savefig("plots/" + model_to_do + "/" + "loss_monitoring.pdf", format='pdf', transparent=True)
         
         #evaluate_model makes plots, like ROC curve, gets stats about training
-        evaluate_model(X_val, y_val, weights_val, mcWeights_val, Z_val, model_to_do, deleteTime, num_constit_lstm, num_track_lstm, num_mseg_lstm, reg_value, doTrackLSTM, doMSegLSTM, doParametrization, learning_rate)
+        evaluate_model(X_val, y_val, weights_val, mcWeights_val, Z_val, model_to_do, deleteTime, num_constit_lstm, num_track_lstm, num_mseg_lstm, reg_value, doTrackLSTM, doMSegLSTM, doParametrization, learning_rate, numConstitLayers, numTrackLayers, numMSegLayers)
 	
 	
     #Dense network, much simpler than above LSTM 
@@ -482,7 +489,7 @@ def train_llp( filename, frac = 1.0, num_max_constits=30, num_max_tracks=20, num
         if deleteTime:
             X_train_constit = X_train.loc[:,'clus_pt_0':'clus_phi_'+str(num_max_constits-1)]
         else:
-            X_train_constit = X_train.loc[:,'clus_pt_0':'clusTime_'+str(num_max_constits-1)]
+            X_train_constit = X_train.loc[:,'clus_pt_0':'clus_time_'+str(num_max_constits-1)]
         
         X_train_track = X_train.loc[:,'nn_track_pt_0':'nn_track_SCTHits_'+str(num_max_tracks-1)]
         if deleteTime:
@@ -499,7 +506,7 @@ def train_llp( filename, frac = 1.0, num_max_constits=30, num_max_tracks=20, num
         if deleteTime:
             X_test_constit = X_test.loc[:,'clus_pt_0':'clus_phi_'+str(num_max_constits-1)]
         else:
-            X_test_constit = X_test.loc[:,'clus_pt_0':'clusTime_'+str(num_max_constits-1)]
+            X_test_constit = X_test.loc[:,'clus_pt_0':'clus_time_'+str(num_max_constits-1)]
         X_test_track = X_test.loc[:,'nn_track_pt_0':'nn_track_SCTHits_'+str(num_max_tracks-1)]
         if deleteTime:
             X_test_MSeg = X_test.loc[:,'nn_MSeg_etaPos_0':'nn_MSeg_phiDir_'+str(num_max_MSegs-1)]
@@ -510,7 +517,7 @@ def train_llp( filename, frac = 1.0, num_max_constits=30, num_max_tracks=20, num
         if deleteTime:
             X_val_constit = X_val.loc[:,'clus_pt_0':'clus_phi_'+str(num_max_constits-1)]
         else:
-            X_val_constit = X_val.loc[:,'clus_pt_0':'clusTime_'+str(num_max_constits-1)]
+            X_val_constit = X_val.loc[:,'clus_pt_0':'clus_time_'+str(num_max_constits-1)]
         X_val_track = X_val.loc[:,'nn_track_pt_0':'nn_track_SCTHits_'+str(num_max_tracks-1)]
         if deleteTime:
             X_val_MSeg = X_val.loc[:,'nn_MSeg_etaPos_0':'nn_MSeg_phiDir_'+str(num_max_MSegs-1)]
@@ -521,7 +528,7 @@ def train_llp( filename, frac = 1.0, num_max_constits=30, num_max_tracks=20, num
             X_val_jet.join(Z_val)
         
         for i in range(0,num_max_constits):
-            temp_loc = X_train_constit.columns.get_loc('clusTime_'+str(i))
+            temp_loc = X_train_constit.columns.get_loc('clus_time_'+str(i))
             
             X_train_constit.insert(temp_loc,'l4_hcal_'+str(i),X_train['l4_hcal_'+str(i)])
             X_train_constit.insert(temp_loc,'l3_hcal_'+str(i),X_train['l3_hcal_'+str(i)])
@@ -575,7 +582,7 @@ def train_llp( filename, frac = 1.0, num_max_constits=30, num_max_tracks=20, num
         model.add(Activation('softmax'))
         model.compile(optimizer='Adam', loss='categorical_crossentropy', metrics=['accuracy'])
         model.summary()
-        history = model.fit(X_train.values, y_train, sample_weight= weights_train.values, epochs=epochs, batch_size=512, validation_data = (X_test.values, y_test, weights_test.values),callbacks=[
+        history = model.fit(X_train.values, y_train, sample_weight= weights_train.values, epochs=epochs, batch_size=1024, validation_data = (X_test.values, y_test, weights_test.values),callbacks=[
         EarlyStopping(
         verbose=True,
         patience=20,
