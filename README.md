@@ -72,6 +72,21 @@ You can edit what is input looking at **llpNN_runner.py**.
 
 Tell training code where file with data to run over is. This should be the output of pre-processing from master branch.
 
+Since there are two GPUs, if the first one is being used, simply include this argument in **args.txt** to use the second one:
+
+```bash
+--useGPU2
+```
+
+WARNING: Watch your memory useage! If two trainings are happening at the same time, memory may exceed the 60G available. Use
+
+```bash
+free -h
+```
+
+on the command line to monitor memory useage. If number under 'Available' column is low, consider reducing the size of your training data.
+
+
 ```bash
 --makeFinalPlots
 ```

@@ -63,9 +63,11 @@ doMSegLSTM: whether or not to run muon segment LSTM
 doParametrization: whether to include mH and mS truth variables in training to enable parametrized training
 learning_rate: Starting learning rate for training
 '''
-def train_llp( filename, frac = 1.0, num_max_constits=30, num_max_tracks=20, num_max_MSegs=30, num_constit_lstm=60, num_track_lstm=60, num_mseg_lstm=25, reg_value=0.001, dropout_value = 0.1,  epochs = 50, model_to_do = "lstm_test" , doTrackLSTM = True, doMSegLSTM = True, doParametrization = False, learning_rate = 0.002, numConstitLayers = 1, numTrackLayers = 1, numMSegLayers = 1):
+def train_llp( filename, useGPU2, frac = 1.0, num_max_constits=30, num_max_tracks=20, num_max_MSegs=30, num_constit_lstm=60, num_track_lstm=60, num_mseg_lstm=25, reg_value=0.001, dropout_value = 0.1,  epochs = 50, model_to_do = "lstm_test" , doTrackLSTM = True, doMSegLSTM = True, doParametrization = False, learning_rate = 0.002, numConstitLayers = 1, numTrackLayers = 1, numMSegLayers = 1):
 
     #name, filename, frac, num_max_constits, num_max_tracks, num_max_MSegs, num_constit_lstm, num_track_lstm, num_mseg_lstm, reg_value, model_to_do = sys.argv
+    if (useGPU2):
+        os.environ["CUDA_VISIBLE_DEVICES"]="1"
 
     #Create a string which will be the name of the model
     #We will use this as directory name to save plots and save the model

@@ -22,6 +22,7 @@ parser = argparse.ArgumentParser(fromfile_prefix_chars='@')
 parser.add_argument('--file_name')
 parser.add_argument('--finalPlots_model')
 parser.add_argument('--doTraining',action="store_true")
+parser.add_argument('--useGPU2',action="store_true")
 parser.add_argument('--makeFinalPlots',action="store_true")
 args = parser.parse_args(['--file_name','foo','@args.txt'])
 args = parser.parse_args(['--finalPlots_model','foo','@args.txt'])
@@ -49,7 +50,7 @@ if (args.doTraining == True):
                 model_to_do = model_to_do_init + filename
                 filename = filename+ ".pkl"
                 print ( model_to_do)
-                train_llp(args.file_name + filename, model_to_do = model_to_do, num_constit_lstm = nodes, num_track_lstm = nodes, num_mseg_lstm = nodes, learning_rate = lr, numConstitLayers = layers, numTrackLayers = layers, numMSegLayers = layers)
+                train_llp(args.file_name + filename, args.useGPU2, model_to_do = model_to_do, num_constit_lstm = nodes, num_track_lstm = nodes, num_mseg_lstm = nodes, learning_rate = lr, numConstitLayers = layers, numTrackLayers = layers, numMSegLayers = layers)
                 gc.collect()
 
 if (args.makeFinalPlots == True):
