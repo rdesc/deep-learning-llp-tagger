@@ -107,9 +107,8 @@ def do_plotting_truth(signal,name,bins, signal_right, model_to_do):
 
 #def plot_vars_final(file_name, model_to_do, doParametrization, deleteTime, doTrackLSTM = True, doMSegLSTM = True, num_max_constits=30, num_max_tracks=20, num_max_MSegs=30, num_constit_lstm=60, num_track_lstm=60, num_mseg_lstm=25, reg_value=0.001, dropout_value = 0.1, learning_rate = 0.002):
 
-def plot_vars_final(X_val, y_val, weights_val, mcWeights_val,  Z_val,  model_to_do, deleteTime, num_constit_lstm, num_track_lstm, num_mseg_lstm, reg_value, doTrackLSTM, doMSegLSTM, doParametrization, learning_rate):
+def plot_vars_final(file_name, model_to_do, deleteTime = False,num_max_constits=30, num_max_tracks=20, num_max_MSegs=30, num_constit_lstm=60, num_track_lstm=60, num_mseg_lstm=25, reg_value=0.001, dropout_value = 0.1,  epochs = 50 , doTrackLSTM = True, doMSegLSTM = True, doParametrization = False, learning_rate = 0.002, numConstitLayers = 1, numTrackLayers = 1, numMSegLayers = 1, hiddenFraction = 1):
 
-    '''
     df = pd.read_pickle(file_name)
     df = df.fillna(0)
 
@@ -129,6 +128,17 @@ def plot_vars_final(X_val, y_val, weights_val, mcWeights_val,  Z_val,  model_to_
         for item in segTimeDelete:
             del df[item]
 
+
+    vertex_delete_x = [col for col in df if col.startswith("nn_track_vertex_x")]
+    for item in vertex_delete_x:
+        del df[item]
+    vertex_delete_y = [col for col in df if col.startswith("nn_track_vertex_y")]
+    for item in vertex_delete_y:
+        del df[item]
+    vertex_delete_z = [col for col in df if col.startswith("nn_track_vertex_z")]
+    for item in vertex_delete_z:
+        del df[item]
+
     print("Length of Signal is: " + str(df[df.label==1].shape[0]) )
     print("Length of QCD is: " + str(df[df.label==0].shape[0]) )
     print("Length of BIB is: " + str(df[df.label==2].shape[0]) )
@@ -137,20 +147,20 @@ def plot_vars_final(X_val, y_val, weights_val, mcWeights_val,  Z_val,  model_to_
     Y = df['label']
     weights = df['flatWeight']
     mcWeights = df['mcEventWeight']
-    X= df.loc[:,'jet_pt':'l4_hcal_29']
+    X= df.loc[:,'jet_pt':'nn_MSeg_t0_29']
     del X['llp_mS']
     del X['llp_mH']
     del X['jet_isClean_LooseBadLLP']
-    Z = df.loc[:,'llp_mH':'llp_mS']
-    #Z = df.loc[:,'eventNumber':'runNumber']
-    #Z = Z.join(df.loc[:,'jet_pt'])
+    #Z = df.loc[:,'llp_mH':'llp_mS']
+    Z = df.loc[:,'eventNumber':'runNumber']
+    Z = Z.join(df.loc[:,'jet_pt'])
 
     
 
 
 
 
-    X_train, X_test, y_train, y_test, weights_train, weights_test, mcWeights_train, mcWeights_test,  Z_train, Z_test = train_test_split(X, Y, weights, mcWeights, Z, test_size = 0.2)
+    X_train, X_test, y_train, y_test, weights_train, weights_test, mcWeights_train, mcWeights_test,  Z_train, Z_test = train_test_split(X, Y, weights, mcWeights, Z, test_size = 0.9)
     del X_train
     del y_train
     del weights_train
@@ -161,14 +171,13 @@ def plot_vars_final(X_val, y_val, weights_val, mcWeights_val,  Z_val,  model_to_
     del Z
 
 
-    X_test, X_val, y_test, y_val, weights_test, weights_val, mcWeights_test, mcWeights_val, Z_test, Z_val = train_test_split(X_test, y_test, weights_test, mcWeights_test,  Z_test, test_size = 0.5)
+    X_test, X_val, y_test, y_val, weights_test, weights_val, mcWeights_test, mcWeights_val, Z_test, Z_val = train_test_split(X_test, y_test, weights_test, mcWeights_test,  Z_test, test_size = 0.1)
 
     del X_test
     del y_test
     del weights_test
     del mcWeights_test
     del Z_test
-    '''
 
     
     signal = X_val[y_val == 1]
@@ -222,18 +231,52 @@ def plot_vars_final(X_val, y_val, weights_val, mcWeights_val,  Z_val,  model_to_
     X_val_track = X_val_track.values.reshape(X_val_track.shape[0],num_max_tracks,num_track_vars)
     X_val_MSeg = X_val_MSeg.values.reshape(X_val_MSeg.shape[0],num_max_MSegs,num_MSeg_vars)
 
-
-
     constit_input = Input(shape=(X_val_constit[0].shape),dtype='float32',name='constit_input')
-    constit_out = CuDNNLSTM(num_constit_lstm, kernel_regularizer = L1L2(l1=reg_value, l2=reg_value))(constit_input)
+    #Have one LSTM layer, with regularizer, tied to input node
+    #constit_out = CuDNNLSTM(num_constit_lstm, kernel_regularizer = L1L2(l1=reg_value, l2=reg_value))(constit_input)
+    if numConstitLayers > 1:
+        constit_out = LSTM(num_constit_lstm, kernel_regularizer = L1L2(l1=reg_value, l2=reg_value), return_sequences = True)(constit_input)
+    else:
+        constit_out = LSTM(num_constit_lstm, kernel_regularizer = L1L2(l1=reg_value, l2=reg_value))(constit_input)
+    for i in range(1,int(numConstitLayers)):
+        if i < int(numConstitLayers)-1:
+            constit_out = LSTM(num_constit_lstm, kernel_regularizer = L1L2(l1=reg_value, l2=reg_value), return_sequences = True)(constit_out)
+        else:
+            constit_out = LSTM(num_constit_lstm, kernel_regularizer = L1L2(l1=reg_value, l2=reg_value))(constit_out)
+    #Have a constit LSTM output, which does the classification using only constituents.
+    #This lets you monitor how the consituent LSTM is doing, but is not used for anything else
     constit_output = Dense(3, activation='softmax', name='constit_output')(constit_out)
 
+    #Need to tell network shape of input for tracks
     track_input = Input(shape=(X_val_track[0].shape),dtype='float32',name='track_input')
-    track_out = CuDNNLSTM(num_track_lstm, kernel_regularizer = L1L2(l1=reg_value, l2=reg_value))(track_input)
+    #Have one LSTM layer, with regularizer, tied to input node
+    if numTrackLayers > 1:
+        track_out = LSTM(num_track_lstm, kernel_regularizer = L1L2(l1=reg_value, l2=reg_value), return_sequences = True)(track_input)
+    else:
+        track_out = LSTM(num_track_lstm, kernel_regularizer = L1L2(l1=reg_value, l2=reg_value))(track_input)
+    for i in range(1,int(numTrackLayers)):
+        if i < int(numTrackLayers)-1:
+            track_out = LSTM(num_track_lstm, kernel_regularizer = L1L2(l1=reg_value, l2=reg_value), return_sequences = True)(track_out)
+        else:
+            track_out = LSTM(num_track_lstm, kernel_regularizer = L1L2(l1=reg_value, l2=reg_value))(track_out)
+    #Have a track LSTM output, which does the classification using only tracks.
+    #This lets you monitor how the track LSTM is doing, but is not used for anything else
     track_output = Dense(3, activation='softmax', name='track_output')(track_out)
 
+    #Need to tell network shape of input for muon segments
     MSeg_input = Input(shape=(X_val_MSeg[0].shape),dtype='float32',name='MSeg_input')
-    MSeg_out = CuDNNLSTM(num_mseg_lstm, kernel_regularizer = L1L2(l1=reg_value, l2=reg_value))(MSeg_input)
+    #Have one LSTM layer, with regularizer, tied to input node
+    if numMSegLayers > 1:
+        MSeg_out = LSTM(num_mseg_lstm, kernel_regularizer = L1L2(l1=reg_value, l2=reg_value), return_sequences = True)(MSeg_input)
+    else:
+        MSeg_out = LSTM(num_mseg_lstm, kernel_regularizer = L1L2(l1=reg_value, l2=reg_value))(MSeg_input)
+    for i in range(1,int(numMSegLayers)):
+        if i < int(numMSegLayers)-1:
+            MSeg_out = LSTM(num_mseg_lstm, kernel_regularizer = L1L2(l1=reg_value, l2=reg_value), return_sequences = True)(MSeg_out)
+        else:
+            MSeg_out = LSTM(num_mseg_lstm, kernel_regularizer = L1L2(l1=reg_value, l2=reg_value))(MSeg_out)
+    #Have a muon segment LSTM output, which does the classification using only muon segments.
+    #This lets you monitor how the muon segment LSTM is doing, but is not used for anything else
     MSeg_output = Dense(3, activation='softmax', name='MSeg_output')(MSeg_out)
 
     jet_input = Input(shape = X_val_jet.values[0].shape, name='jet_input')
@@ -252,10 +295,14 @@ def plot_vars_final(X_val, y_val, weights_val, mcWeights_val,  Z_val,  model_to_
 
     x = keras.layers.concatenate(layersToConcatenate)
 
-    x = Dense(512, activation='relu')(x)
-    x = Dropout(0.2)(x)
-    x = Dense(64, activation='relu')(x)
-    x = Dropout(0.2)(x)
+    #Add a few dense layers after LSTM to connect the results of that together
+    #TODO: optimise, understand this
+    firstLayerDense = 512*hiddenFraction
+    secondLayerDense = 64*hiddenFraction
+    x = Dense(int(firstLayerDense), activation='relu')(x)
+    x = Dropout(dropout_value)(x)
+    x = Dense(int(secondLayerDense), activation='relu')(x)
+    x = Dropout(dropout_value)(x)
 
     main_output = Dense(3, activation='softmax', name='main_output')(x)
 
@@ -394,8 +441,9 @@ def plot_vars_final(X_val, y_val, weights_val, mcWeights_val,  Z_val,  model_to_
     signal_llp_efficiencies(prediction,y_val,Z_val, destination,f)
 
     f.close()
+    '''
 
-    f = open("keras_validation_sep17.txt","w+")
+    f = open("keras_validation_dec24.txt","w+")
 
 
     for (row,pred_main, pred_clus, pred_track, pred_mseg) in zip(Z_val.itertuples(index=True, name='Pandas'), validation_prediction[0], validation_prediction[1], validation_prediction[2], validation_prediction[3]):
@@ -403,6 +451,7 @@ def plot_vars_final(X_val, y_val, weights_val, mcWeights_val,  Z_val,  model_to_
 
 
     f.close()
+    '''
     f_clus = open("clus_keras_validation.txt","w+")
 
     print(X_val_constit_copy)
@@ -424,7 +473,6 @@ def plot_vars_final(X_val, y_val, weights_val, mcWeights_val,  Z_val,  model_to_
 
 
     f_mseg.close()
-    '''
 
     signal_right_1 = prediction[:,1] > prediction[:,0]# and prediction[:,1] > prediction[:,2]
     qcd_right_1 = prediction[:,0] > prediction[:,1]# and prediction[:,0] > prediction[:,2]
@@ -466,7 +514,6 @@ def plot_vars_final(X_val, y_val, weights_val, mcWeights_val,  Z_val,  model_to_
 
 
  
-    '''
     filter_nn_clus = [col for col in signal if col.startswith("clus_pt")]
     filter_nn_track = [col for col in signal if col.startswith("nn_track_pt")]
     filter_nn_MSeg = [col for col in signal if col.startswith("nn_MSeg_etaDir")]

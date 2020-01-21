@@ -17,7 +17,6 @@ from keras.optimizers import SGD, Adam, Adadelta, Adagrad, Adamax, RMSprop
 from keras.regularizers import l1, l2, L1L2
 from keras.utils import np_utils
 from keras.utils.vis_utils import plot_model
-
 import sklearn
 from sklearn.metrics import roc_curve
 from sklearn.model_selection import train_test_split
@@ -63,7 +62,7 @@ doMSegLSTM: whether or not to run muon segment LSTM
 doParametrization: whether to include mH and mS truth variables in training to enable parametrized training
 learning_rate: Starting learning rate for training
 '''
-def train_llp( filename, useGPU2, frac = 1.0, num_max_constits=30, num_max_tracks=20, num_max_MSegs=30, num_constit_lstm=60, num_track_lstm=60, num_mseg_lstm=25, reg_value=0.001, dropout_value = 0.1,  epochs = 50, model_to_do = "lstm_test" , doTrackLSTM = True, doMSegLSTM = True, doParametrization = False, learning_rate = 0.002, numConstitLayers = 1, numTrackLayers = 1, numMSegLayers = 1):
+def train_llp( filename, useGPU2, frac = 1.0, num_max_constits=30, num_max_tracks=20, num_max_MSegs=30, num_constit_lstm=60, num_track_lstm=60, num_mseg_lstm=25, reg_value=0.001, dropout_value = 0.1,  epochs = 50, model_to_do = "lstm_test" , doTrackLSTM = True, doMSegLSTM = True, doParametrization = False, learning_rate = 0.002, numConstitLayers = 1, numTrackLayers = 1, numMSegLayers = 1, hiddenFraction = 1):
 
     #name, filename, frac, num_max_constits, num_max_tracks, num_max_MSegs, num_constit_lstm, num_track_lstm, num_mseg_lstm, reg_value, model_to_do = sys.argv
     if (useGPU2):
@@ -99,7 +98,7 @@ def train_llp( filename, useGPU2, frac = 1.0, num_max_constits=30, num_max_track
     destination = "plots/"+model_to_do + "/"
     #Write a file with some details of architecture, will append final stats at end of training
     f = open(destination+"training_details.txt","w+")
-    f.write("%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n" % (frac, num_max_constits, num_max_tracks, num_max_MSegs, num_constit_lstm, num_track_lstm, num_mseg_lstm, learning_rate, reg_value, dropout_value, epochs, doTrackLSTM, doMSegLSTM, doParametrization, learning_rate, numConstitLayers, numTrackLayers, numMSegLayers) )
+    f.write("%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n" % (frac, num_max_constits, num_max_tracks, num_max_MSegs, num_constit_lstm, num_track_lstm, num_mseg_lstm, learning_rate, reg_value, dropout_value, epochs, doTrackLSTM, doMSegLSTM, doParametrization, learning_rate, numConstitLayers, numTrackLayers, numMSegLayers, hiddenFraction) )
     f.close()
 
     #Convert inputs to correct type
@@ -242,7 +241,7 @@ def train_llp( filename, useGPU2, frac = 1.0, num_max_constits=30, num_max_track
             X_train_MSeg = X_train.loc[:,'nn_MSeg_etaPos_0':'nn_MSeg_t0_'+str(num_max_MSegs-1)]
         X_train_jet = X_train.loc[:,'jet_pt':'jet_phi']
         if doParametrization == True:
-            X_train_jet = X_train_jet.join(Z_train)
+            X_train_jet = X_train_jet.join(Z_train['llp_mH'])
 
         
         #X_train_jet.join(X_train.loc[:,'llp_mH'])
@@ -261,7 +260,7 @@ def train_llp( filename, useGPU2, frac = 1.0, num_max_constits=30, num_max_track
             X_test_MSeg = X_test.loc[:,'nn_MSeg_etaPos_0':'nn_MSeg_t0_'+str(num_max_MSegs-1)]
         X_test_jet = X_test.loc[:,'jet_pt':'jet_phi']
         if doParametrization:
-            X_test_jet= X_test_jet.join(Z_test)
+            X_test_jet= X_test_jet.join(Z_test['llp_mH'])
         
         #Does same constructing for validation dataset
         if deleteTime:
@@ -275,7 +274,7 @@ def train_llp( filename, useGPU2, frac = 1.0, num_max_constits=30, num_max_track
             X_val_MSeg = X_val.loc[:,'nn_MSeg_etaPos_0':'nn_MSeg_t0_'+str(num_max_MSegs-1)]
         X_val_jet = X_val.loc[:,'jet_pt':'jet_phi']
         if doParametrization:
-            X_val_jet= X_val_jet.join(Z_val)
+            X_val_jet= X_val_jet.join(Z_val['llp_mH'])
 
         
         
@@ -367,9 +366,11 @@ def train_llp( filename, useGPU2, frac = 1.0, num_max_constits=30, num_max_track
         
         #Add a few dense layers after LSTM to connect the results of that together
         #TODO: optimise, understand this
-        x = Dense(512, activation='relu')(x)
+        firstLayerDense = 512*hiddenFraction
+        secondLayerDense = 64*hiddenFraction
+        x = Dense(int(firstLayerDense), activation='relu')(x)
         x = Dropout(dropout_value)(x)
-        x = Dense(64, activation='relu')(x)
+        x = Dense(int(secondLayerDense), activation='relu')(x)
         x = Dropout(dropout_value)(x)
         
         #Main output for 3 classes, must be softmax for multiclass
@@ -387,7 +388,7 @@ def train_llp( filename, useGPU2, frac = 1.0, num_max_constits=30, num_max_track
         weights_to_validate = [weights_test.values, weights_test.values, weights_test.values,weights_test.values,weights_test.values]
         #Weight for each loss function, for main loss. At this point a bit arbitrary
         #TODO: optimise
-        weights_for_loss = [1., 0.1, 0.4, 0.2,0.1]
+        weights_for_loss = [1., 0.001, 0.4, 0.2,0.]
         
         #Change inputs and outputs depending on what variables are being used
         if (doTrackLSTM and not doMSegLSTM):
@@ -425,7 +426,7 @@ def train_llp( filename, useGPU2, frac = 1.0, num_max_constits=30, num_max_track
         model = Model(inputs=layers_to_input, outputs=layers_to_output)
         
         #Make an optimiser. Nadam is good as it has decaying learning rate
-        opt = keras.optimizers.Nadam(lr=learning_rate, beta_1=0.9, beta_2=0.999, epsilon=None, schedule_decay=0.004)
+        opt = keras.optimizers.Nadam(lr=learning_rate, beta_1=0.9, beta_2=0.999, epsilon=None, schedule_decay=0.004, clipnorm=1.)
         #Compile model
         model.compile(optimizer=opt, loss='categorical_crossentropy',
         loss_weights=weights_for_loss, metrics=['accuracy'])
@@ -434,14 +435,14 @@ def train_llp( filename, useGPU2, frac = 1.0, num_max_constits=30, num_max_track
         #Do the training, save it to history for plots
         #Batch size hardcoded to 512, NOT optimised
         #Has EarlyStopping module, if variable under monitor has not gotten better after <patience> epochs, stop, keep best at directory under ModelCheckpoint
-        history = model.fit(x_to_train, y_to_train, sample_weight= weights_to_train, epochs=epochs, batch_size=1024, validation_data = (x_to_validate, y_to_validate, weights_to_validate),callbacks=[
+        history = model.fit(x_to_train, y_to_train, sample_weight= weights_to_train, epochs=epochs, batch_size=5000, validation_data = (x_to_validate, y_to_validate, weights_to_validate),callbacks=[
         EarlyStopping(
         verbose=True,
-        patience=10,
-        monitor='val_main_output_acc'),
+        patience=20,
+        monitor='val_main_output_loss'),
         ModelCheckpoint(
         'keras_outputs/'+model_to_do+'/checkpoint',
-        monitor='val_main_output_acc',
+        monitor='val_main_output_loss',
         verbose=True,
         save_best_only=True)])
         #Plot accuracy history for training and validation
@@ -469,7 +470,7 @@ def train_llp( filename, useGPU2, frac = 1.0, num_max_constits=30, num_max_track
         plt.savefig("plots/" + model_to_do + "/" + "loss_monitoring.pdf", format='pdf', transparent=True)
         
         #evaluate_model makes plots, like ROC curve, gets stats about training
-        evaluate_model(X_val, y_val, weights_val, mcWeights_val, Z_val, model_to_do, deleteTime, num_constit_lstm, num_track_lstm, num_mseg_lstm, reg_value, doTrackLSTM, doMSegLSTM, doParametrization, learning_rate, numConstitLayers, numTrackLayers, numMSegLayers)
+        evaluate_model(X_val, y_val, weights_val, mcWeights_val, Z_val, model_to_do, deleteTime, num_constit_lstm, num_track_lstm, num_mseg_lstm, reg_value, doTrackLSTM, doMSegLSTM, doParametrization, learning_rate, numConstitLayers, numTrackLayers, numMSegLayers, hiddenFraction)
 	
 	
     #Dense network, much simpler than above LSTM 

@@ -341,7 +341,7 @@ def plot_prediction_histograms(destination,
     plt.clf()
     return
 
-def evaluate_model(X_test, y_test, weights_test, mcWeights_test,  Z_test,  model_to_do, deleteTime, num_constit_lstm, num_track_lstm, num_mseg_lstm, reg_value, doTrackLSTM, doMSegLSTM, doParametrization, learning_rate, numConstitLayers, numTrackLayers, numMSegLayers):
+def evaluate_model(X_test, y_test, weights_test, mcWeights_test,  Z_test,  model_to_do, deleteTime, num_constit_lstm, num_track_lstm, num_mseg_lstm, reg_value, doTrackLSTM, doMSegLSTM, doParametrization, learning_rate, numConstitLayers, numTrackLayers, numMSegLayers, hiddenFraction):
 
     #Easy set up of dense model
     #Unfortunately have to hard code architecture for now
@@ -399,7 +399,7 @@ def evaluate_model(X_test, y_test, weights_test, mcWeights_test,  Z_test,  model
             X_test_MSeg = X_test.loc[:,'nn_MSeg_etaPos_0':'nn_MSeg_t0_'+str(num_max_MSegs-1)]
         X_test_jet = X_test.loc[:,'jet_pt':'jet_phi']
         if doParametrization:
-            X_test_jet = X_test_jet.join(Z_test)
+            X_test_jet = X_test_jet.join(Z_test['llp_mH'])
 
 
 
@@ -463,9 +463,9 @@ def evaluate_model(X_test, y_test, weights_test, mcWeights_test,  Z_test,  model
 
         x = keras.layers.concatenate(layersToConcatenate)
 
-        x = Dense(512, activation='relu')(x)
+        x = Dense(512*hiddenFraction, activation='relu')(x)
         x = Dropout(0.2)(x)
-        x = Dense(64, activation='relu')(x)
+        x = Dense(64*hiddenFraction, activation='relu')(x)
         x = Dropout(0.2)(x)
 
         main_output = Dense(3, activation='softmax', name='main_output')(x)
