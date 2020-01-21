@@ -212,6 +212,60 @@ def analyse_roc(roc_files,string_int,name):
     plt.yscale('log', nonposy='clip')
     plt.savefig("plots/lstm_fracTest/AUC_analysis_"+name+".pdf", format='pdf', transparent=True)
 
+def analyse_roc_lstmDepthTest(roc_files):
+
+    errors = [0.0085, 0.0219, 0.0236, 0.0186, 0.0068, 0.0019, 0.0009, 0.0008, 0.0009]
+    output_file = open("/home/fcormier/calRatio/fullRun2/gpu_llpnn/python/plots/evaluateTraining/depthTest.txt","w+")
+
+    for item in roc_files:
+        file = open(item,"r")
+        print(item)
+        counter = 0
+        current_layers = 0
+        current_nodes = 0
+        current_learningRate = 0
+        temp_auc = []
+        for line in file:
+            if counter == 0:
+                cs_string = line.split(',')
+                current_nodes = float(cs_string[4])
+                current_layers = float(cs_string[15])
+                current_learningRate = float(cs_string[7])
+            if counter > 0 and counter < 10:
+                cs_string = line.split(',')
+                temp_auc.append(float(cs_string[1]))
+            counter = counter + 1
+        temp_mean = np.mean(temp_auc)
+        output_file.write("%s,%s,%s,%s\n" % (current_layers, current_nodes, current_learningRate, temp_mean))
+
+    output_file.close()
+
+def analyse_roc_hiddenDepthTest(roc_files):
+
+    errors = [0.0085, 0.0219, 0.0236, 0.0186, 0.0068, 0.0019, 0.0009, 0.0008, 0.0009]
+    output_file = open("/home/fcormier/calRatio/fullRun2/gpu_llpnn/python/plots/evaluateTraining/finalTest.txt","w+")
+
+    for item in roc_files:
+        file = open(item,"r")
+        print(item)
+        counter = 0
+        current_layers = 0
+        current_nodes = 0
+        current_learningRate = 0
+        temp_auc = []
+        for line in file:
+            if counter == 0:
+                cs_string = line.split(',')
+                current_hiddenLayer = float(cs_string[18])
+            if counter > 0 and counter < 10:
+                cs_string = line.split(',')
+                temp_auc.append(float(cs_string[1]))
+            counter = counter + 1
+        temp_mean = np.mean(temp_auc)
+        output_file.write("%s,%s\n" % (current_hiddenLayer, temp_mean))
+
+    output_file.close()
+
 def analyse_roc_inclusion(roc_files,string_int,name):
 
     myDict = {}
@@ -319,6 +373,8 @@ def analyse_roc_distanceTest(roc_files_distanceTest, filename):
     df = pd.read_pickle(filename)
     #Replace all NaN by 0
     df = df.fillna(0)
+
+    os.environ["CUDA_VISIBLE_DEVICES"]="1"
 
 
 
@@ -519,6 +575,50 @@ def analyse_roc_distanceTest(roc_files_distanceTest, filename):
     colors = ['red','blue','green','pink','yellow']
     counter = 0
 
+    #Do signal accuracy plot
+    for training_file in roc_files_distanceTest: 
+        #Up to here same procedure as in training
+        #Now load weights from already trained network
+        model.load_weights("keras_outputs/"+training_file+'/checkpoint')
+
+        #Use network to predict labels from test set, depending on if dense or lstm model
+        prediction = model.predict(x_to_validate, verbose = True)
+        prediction = prediction[0]
+
+        signal_right_1 = prediction[:,1] > prediction[:,0]# and prediction[:,1] > prediction[:,2]
+        qcd_right_1 = prediction[:,0] > prediction[:,1]# and prediction[:,0] > prediction[:,2]
+        bib_right_1 = prediction[:,2] > prediction[:,0]# and prediction[:,2] > prediction[:,1]
+    
+        signal_right_2 = prediction[:,1] > prediction[:,2]
+        qcd_right_2 = prediction[:,0] > prediction[:,2]
+        bib_right_2 = prediction[:,2] > prediction[:,1]
+    
+    
+        signal_highest = signal_right_1 & signal_right_2
+        qcd_highest = qcd_right_1 & qcd_right_2
+        bib_highest = bib_right_1 & bib_right_2
+    
+        signal_right = (1*(signal_highest+y_val == 2))[y_val == 1]
+        qcd_right = (1*(qcd_highest+y_val == 1))[y_val == 0]
+        bib_right = (1*(bib_highest+y_val == 3))[y_val == 2]
+
+        print(signal_right.shape)
+        print(signal.values.flatten().shape)
+
+        signal_filter = signal['aux_llp_Lxy']
+        bins = range(550,4000,50)
+        llp_Lxy = int(find_number(training_file,"Lxy")[0])
+        llp_Lz = int(find_number(training_file,"Lz")[0])
+        g = sns.regplot(x=signal_filter.values.flatten(), y=1-signal_right, x_bins=bins, fit_reg=None, color=colors[counter], label=f"Lxy: {(llp_Lxy):.0f}" + f", Lz: {(llp_Lz):.0f}")
+        g.set(yscale="log")
+        counter = counter + 1
+        plt.ylabel("1-Accuracy")
+        plt.xlabel("Lxy")
+
+    plt.legend()
+    plt.savefig("plots/Lxy_studies/comparison.pdf", format = 'pdf', transparent = True)
+
+    #Do bkg false positives plot
     for training_file in roc_files_distanceTest: 
         #Up to here same procedure as in training
         #Now load weights from already trained network
