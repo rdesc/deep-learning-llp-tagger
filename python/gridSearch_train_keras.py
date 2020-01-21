@@ -60,7 +60,7 @@ epochs: Number of epochs to train for
 model_to_do: first part of name to save model by (will add some of these other variables to name)
 doTrackLSTM: whether or not to run track LSTM
 doMSegLSTM: whether or not to run muon segment LSTM
-doParametrization: whether to include mH and mS truth variables in training to enable parametrized training
+doParametrization: whether to include mH and mS truth variables in training to enable parametrized training # mH mass of mediator boson (phi) mS mass of signal particle
 learning_rate: Starting learning rate for training
 '''
 def train_llp( filename, useGPU2, frac = 1.0, num_max_constits=30, num_max_tracks=20, num_max_MSegs=30, num_constit_lstm=60, num_track_lstm=60, num_mseg_lstm=25, reg_value=0.001, dropout_value = 0.1,  epochs = 50, model_to_do = "lstm_test" , doTrackLSTM = True, doMSegLSTM = True, doParametrization = False, learning_rate = 0.002, numConstitLayers = 1, numTrackLayers = 1, numMSegLayers = 1):
@@ -99,7 +99,7 @@ def train_llp( filename, useGPU2, frac = 1.0, num_max_constits=30, num_max_track
     destination = "plots/"+model_to_do + "/"
     #Write a file with some details of architecture, will append final stats at end of training
     f = open(destination+"training_details.txt","w+")
-    f.write("%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n" % (frac, num_max_constits, num_max_tracks, num_max_MSegs, num_constit_lstm, num_track_lstm, num_mseg_lstm, learning_rate, reg_value, dropout_value, epochs, doTrackLSTM, doMSegLSTM, doParametrization, learning_rate, numConstitLayers, numTrackLayers, numMSegLayers) )
+    f.write("frac = %s\nnum_max_constits = %s\nnum_max_tracks = %s\nnum_max_MSegs = %s\nnum_constit_lstm = %s\nnum_track_lstm = %s\nnum_mseg_lstm = %s\nlearning_rate = %s\nreg_value = %s\ndropout_value = %s\nepochs = %s\ndoTrackLSTM = %s\ndoMSegLSTM = %s\ndoParametrization = %s\nlearning_rate = %s\nnumConstitLayers = %s\nnumTrackLayers = %s\nnumMSegLayers = %s\n" % (frac, num_max_constits, num_max_tracks, num_max_MSegs, num_constit_lstm, num_track_lstm, num_mseg_lstm, learning_rate, reg_value, dropout_value, epochs, doTrackLSTM, doMSegLSTM, doParametrization, learning_rate, numConstitLayers, numTrackLayers, numMSegLayers))
     f.close()
 
     #Convert inputs to correct type
