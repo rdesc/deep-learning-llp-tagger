@@ -124,6 +124,7 @@ def train_llp( filename, useGPU2, frac = 1.0, num_max_constits=30, num_max_track
     
     #Read input pickle
     df = pd.read_pickle(filename)
+    df = df.replace([np.inf, -np.inf], np.nan)
     #Replace all NaN by 0
     df = df.fillna(0)
     
@@ -388,7 +389,7 @@ def train_llp( filename, useGPU2, frac = 1.0, num_max_constits=30, num_max_track
         weights_to_validate = [weights_test.values, weights_test.values, weights_test.values,weights_test.values,weights_test.values]
         #Weight for each loss function, for main loss. At this point a bit arbitrary
         #TODO: optimise
-        weights_for_loss = [1., 0.001, 0.4, 0.2,0.]
+        weights_for_loss = [1., 0.1, 0.4, 0.4,0.01]
         
         #Change inputs and outputs depending on what variables are being used
         if (doTrackLSTM and not doMSegLSTM):
