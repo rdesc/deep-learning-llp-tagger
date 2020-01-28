@@ -404,7 +404,7 @@ def evaluate_model(X_test, y_test, weights_test, mcWeights_test,  Z_test,  model
             X_test_MSeg = X_test.loc[:,'nn_MSeg_etaPos_0':'nn_MSeg_t0_'+str(num_max_MSegs-1)]
         X_test_jet = X_test.loc[:,'jet_pt':'jet_phi']
         if doParametrization:
-            X_test_jet = X_test_jet.join(Z_test)
+            X_test_jet = X_test_jet.join(Z_test['llp_mH'])
 
 
 
@@ -542,7 +542,7 @@ def evaluate_model(X_test, y_test, weights_test, mcWeights_test,  Z_test,  model
     plot_prediction_histograms(destination,prediction,y_test, mcWeights_test, model_to_do)
     #threshold_array = np.logspace(-0.1,-0.001,30)[::-3]
     #This will be the BIB efficiencies to aim for when making family of ROC curves
-    threshold_array = [(1-0.001),(1-0.003),(1-0.009),(1-0.0316),(1-0.023),(1-0.059),(1-0.151),(1-0.389),0.001]
+    threshold_array = [(1-0.001),(1-0.003),(1-0.009),(1-0.023),(1-0.0316),(1-0.059),(1-0.151),(1-0.389),0.001]
     #threshold_array = [0.995,(1-0.009),(1-0.023),(1-0.059),(1-0.151),(1-0.389),0.001]
     counter=0
     #Third label: the label of the class we are doing a 'family' of. Other two classes will make the ROC curve

@@ -249,7 +249,7 @@ def train_llp( filename, useGPU2, frac = 1.0, num_max_constits=30, num_max_track
             X_train_MSeg = X_train.loc[:,'nn_MSeg_etaPos_0':'nn_MSeg_t0_'+str(num_max_MSegs-1)]
         X_train_jet = X_train.loc[:,'jet_pt':'jet_phi']
         if doParametrization == True:
-            X_train_jet = X_train_jet.join(Z_train)
+            X_train_jet = X_train_jet.join(Z_train['llp_mH'])
 
         
         #X_train_jet.join(X_train.loc[:,'llp_mH'])
@@ -268,7 +268,7 @@ def train_llp( filename, useGPU2, frac = 1.0, num_max_constits=30, num_max_track
             X_test_MSeg = X_test.loc[:,'nn_MSeg_etaPos_0':'nn_MSeg_t0_'+str(num_max_MSegs-1)]
         X_test_jet = X_test.loc[:,'jet_pt':'jet_phi']
         if doParametrization:
-            X_test_jet= X_test_jet.join(Z_test)
+            X_test_jet= X_test_jet.join(Z_test['llp_mH'])
         
         #Does same constructing for validation dataset
         if deleteTime:
@@ -282,7 +282,7 @@ def train_llp( filename, useGPU2, frac = 1.0, num_max_constits=30, num_max_track
             X_val_MSeg = X_val.loc[:,'nn_MSeg_etaPos_0':'nn_MSeg_t0_'+str(num_max_MSegs-1)]
         X_val_jet = X_val.loc[:,'jet_pt':'jet_phi']
         if doParametrization:
-            X_val_jet= X_val_jet.join(Z_val)
+            X_val_jet= X_val_jet.join(Z_val['llp_mH'])
 
         
         
