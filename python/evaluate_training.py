@@ -83,6 +83,7 @@ def signal_llp_efficiencies(prediction,y_test,Z_test,destination,f):
     prediction = prediction[sig_rows]
     Z_test = Z_test.iloc[sig_rows]
     mass_array = (Z_test.groupby(['llp_mH','llp_mS']).size().reset_index().rename(columns={0:'count'}))
+    print(mass_array)
 
     plot_x = []
     plot_y = []
@@ -111,10 +112,14 @@ def signal_llp_efficiencies(prediction,y_test,Z_test,destination,f):
     plt.clf()
 
 def bkg_falsePositives(prediction,y_test,Z_test,destination,f):
-    bkg_rows = np.where(y_test==0 | y_test==2)
-    prediction = prediction[bkg_rows]
-    Z_test = Z_test.iloc[bkg_rows]
+    qcd_rows = np.where(y_test==0)
+    bib_rows = np.where(y_test==2)
+    bkg_rows = np.array((qcd_rows[0], bib_rows[0]))
+    print(len(bkg_rows[0]))
+    prediction = prediction[bkg_rows[0]]
+    Z_test = Z_test.iloc[bkg_rows[0]]
     mass_array = (Z_test.groupby(['llp_mH','llp_mS']).size().reset_index().rename(columns={0:'count'}))
+    print(mass_array)
 
     plot_x = []
     plot_y = []
@@ -128,7 +133,7 @@ def bkg_falsePositives(prediction,y_test,Z_test,destination,f):
         plot_x.append(mH)
         plot_y.append(temp_eff)
         plot_z.append(mS)
-        print("mH: " + str(mH) + ", mS: " + str(mS) + ", Eff: " + str(temp_eff))
+        print("mH: " + str(mH) + ", mS: " + str(mS) + ", False positive: " + str(temp_eff))
         f.write("%s,%s,%s\n" % (str(mH), str(mS), str(temp_eff)) )
 
     plt.clf()
@@ -537,7 +542,7 @@ def evaluate_model(X_test, y_test, weights_test, mcWeights_test,  Z_test,  model
     plot_prediction_histograms(destination,prediction,y_test, mcWeights_test, model_to_do)
     #threshold_array = np.logspace(-0.1,-0.001,30)[::-3]
     #This will be the BIB efficiencies to aim for when making family of ROC curves
-    threshold_array = [0.9999,(1-0.001),(1-0.003),(1-0.009),(1-0.023),(1-0.059),(1-0.151),(1-0.389),0.001]
+    threshold_array = [(1-0.001),(1-0.003),(1-0.009),(1-0.023),(1-0.0316),(1-0.059),(1-0.151),(1-0.389),0.001]
     #threshold_array = [0.995,(1-0.009),(1-0.023),(1-0.059),(1-0.151),(1-0.389),0.001]
     counter=0
     #Third label: the label of the class we are doing a 'family' of. Other two classes will make the ROC curve
@@ -566,7 +571,7 @@ def evaluate_model(X_test, y_test, weights_test, mcWeights_test,  Z_test,  model
         f.write("%s, %s\n" % (str(-item+1), str(roc_auc)) )
         print("AUC: " + str(roc_auc) )
         #Make ROC curve
-        plt.plot(tag_eff, bkg_eff, label= f"BIB Eff: {(-item+1):.3f}" +f", AUC: {roc_auc:.3f}")
+        plt.plot(tag_eff, bkg_eff, label= f"BIB Eff: {(item):.3f}" +f", AUC: {roc_auc:.3f}")
         plt.xlabel("LLP Tagging Efficiency")
         axes = plt.gca()
         axes.set_xlim([0,1])
@@ -601,6 +606,7 @@ def evaluate_model(X_test, y_test, weights_test, mcWeights_test,  Z_test,  model
     plt.cla()
     #Make plots of signal efficiency vs mH, mS
     signal_llp_efficiencies(prediction,y_test,Z_test, destination,f)
+    bkg_falsePositives(prediction,y_test,Z_test, destination,f)
     f.close()
     #plot_vars_final(X_test, y_test, weights_test, mcWeights_test, Z_test, model_to_do, deleteTime, num_constit_lstm, num_track_lstm, num_mseg_lstm, reg_value, doTrackLSTM, doMSegLSTM, doParametrization, learning_rate)
 

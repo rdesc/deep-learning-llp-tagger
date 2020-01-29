@@ -124,6 +124,7 @@ def train_llp( filename, useGPU2, frac = 1.0, num_max_constits=30, num_max_track
     
     #Read input pickle
     df = pd.read_pickle(filename)
+    df = df.replace([np.inf, -np.inf], np.nan)
     #Replace all NaN by 0
     df = df.fillna(0)
     
@@ -176,14 +177,21 @@ def train_llp( filename, useGPU2, frac = 1.0, num_max_constits=30, num_max_track
     #Keep mcWeights for evaluation
     mcWeights = df['mcEventWeight']
     #Hard code start and end of names of variables
-    X= df.loc[:,'jet_pt':'nn_MSeg_t0_29']
+    X= df.loc[:,'clus_pt_0':'nn_MSeg_t0_29']
+    X = df.loc[:,'jet_pt':'jet_phi'].join(X)
+    print(list(X.columns))
+    print(X)
+
     #TODO: have true/false input to decide if we are deleting input parametrized variables
-    del X['llp_mS']
-    del X['llp_mH']
     #Delete variables we don't need
-    del X['jet_isClean_LooseBadLLP']
     #Label Z as parametrized variables
     Z = df.loc[:,'llp_mH':'llp_mS']
+
+    mass_array = (df.groupby(['llp_mH','llp_mS']).size().reset_index().rename(columns={0:'count'}))
+    mass_array['proportion'] = mass_array['count']/len(df.index)
+    print(mass_array)
+
+    del df
     
     
     #Divide into train/test datasets
@@ -388,7 +396,7 @@ def train_llp( filename, useGPU2, frac = 1.0, num_max_constits=30, num_max_track
         weights_to_validate = [weights_test.values, weights_test.values, weights_test.values,weights_test.values,weights_test.values]
         #Weight for each loss function, for main loss. At this point a bit arbitrary
         #TODO: optimise
-        weights_for_loss = [1., 0.001, 0.4, 0.2,0.]
+        weights_for_loss = [1., 0.01, 0.4, 0.1,0.01]
         
         #Change inputs and outputs depending on what variables are being used
         if (doTrackLSTM and not doMSegLSTM):
@@ -426,7 +434,7 @@ def train_llp( filename, useGPU2, frac = 1.0, num_max_constits=30, num_max_track
         model = Model(inputs=layers_to_input, outputs=layers_to_output)
         
         #Make an optimiser. Nadam is good as it has decaying learning rate
-        opt = keras.optimizers.Nadam(lr=learning_rate, beta_1=0.9, beta_2=0.999, epsilon=None, schedule_decay=0.004, clipnorm=1.)
+        opt = keras.optimizers.Nadam(lr=learning_rate, beta_1=0.9, beta_2=0.999, epsilon=None, schedule_decay=0.004)
         #Compile model
         model.compile(optimizer=opt, loss='categorical_crossentropy',
         loss_weights=weights_for_loss, metrics=['accuracy'])
