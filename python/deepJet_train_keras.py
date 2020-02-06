@@ -218,12 +218,22 @@ def train_llp_cnn(filename, useGPU2, frac = 1.0, num_max_constits=30, num_max_tr
     # Done preparing inputs for model!!
     # Now to setup ML architecture
     # Inputs
-    constit_input_tensor = Input(shape=(X_train_constit[0].shape),dtype='float32',name='constit_input')
+    constit_input_tensor = Input(shape=(X_train_constit[0].shape), dtype='float32', name='constit_input')
     # input shape = 3D tensor with shape: (batch, steps, channels)
     # output shape = 3D tensor with shape: (batch, new_steps, filters)
     constit_output_tensor = Conv1D(filters=num_constit_cnn.pop(0), kernel_size=1, activation='relu', input_shape=(X_train_constit[0].shape))(constit_input_tensor)
-
     for i in range(len(num_constit_cnn)):
        	constit_output_tensor = Conv1D(filters=num_constit_cnn.pop(0), kernel_size=1, activation='relu')(constit_output_tensor)
 
-    
+    # TODO: make helper functions to avoid duplicate code such as below
+    track_input_tensor = Input(shape=(X_train_track[0].shape), dtype='float32', name='track_input')
+    track_output_tensor = Conv1D(filters=num_track_cnn.pop(0), kernel_size=1, activation='relu', input_shape=(X_train_track[0].shape))(track_input_tensor)
+    for i in range(len(num_track_cnn)):
+        track_output_tensor = Conv1D(filters=num_track_cnn.pop(0), kernel_size=1, activation='relu')(track_output_tensor)
+
+    MSeg_input_tensor = Input(shape=(X_train_MSeg[0].shape), dtype='float32', name='track_input')
+    MSeg_ouput_tensor = Conv1D(filters=num_MSeg_cnn.pop(0), kernel_size=1, activation='relu', input_shape=(X_train_MSeg[0].shape))(MSeg_input_tensor)
+    for i in range(len(num_MSeg_cnn)):
+        MSeg_output_tensor = Con1D(filters=num_MSeg_cnn.pop(0), kernel_size=1, activation='relu', input_shape=(X_train_MSeg[0].shape))(MSeg_output_tensor)
+
+
