@@ -134,15 +134,19 @@ def train_llp(filename, useGPU2, constit_input, track_input, MSeg_input, jet_inp
     # output shape = 3D tensor with shape: (batch, new_steps, filters
 
     # Set up inputs and outputs for Conv1D layers
-    constit_input_tensor, constit_output_tensor = constit_input.init_keras_cnn_input_output(X_train_constit[0].shape, 'constit')
-    track_input_tensor, track_output_tensor = track_input.init_keras_cnn_input_output(X_train_track[0].shape, 'track')
-    MSeg_input_tensor, MSeg_ouput_tensor = MSeg_input.init_keras_cnn_input_output(X_train_MSeg[0].shape, 'MSeg')
+    constit_input_tensor, constit_output_tensor = constit_input.init_keras_cnn_input_output(X_train_constit[0].shape)
+    track_input_tensor, track_output_tensor = track_input.init_keras_cnn_input_output(X_train_track[0].shape)
+    MSeg_input_tensor, MSeg_ouput_tensor = MSeg_input.init_keras_cnn_input_output(X_train_MSeg[0].shape)
 
-    # Set up LSTM layers
+    # Set up LSTM layers + Dense layer for monitoring
     constit_output_tensor = constit_input.init_keras_lstm(reg_value, constit_output_tensor)
     track_output_tensor = track_input.init_keras_lstm(reg_value, track_output_tensor)
     MSeg_ouput_tensor = MSeg_input.init_keras_lstm(reg_value, MSeg_ouput_tensor)
 
-    model = Model(inputs=[constit_input_tensor, track_input_tensor, MSeg_input_tensor],
-                  outputs=[constit_output_tensor, track_output_tensor, MSeg_ouput_tensor])
+    # Set up layers for jet
+    jet_input_tensor, jet_output_tensor = jet_input.init_keras_dense_input_output(X_train_jet.values[0].shape)
+
+    model = Model(inputs=[constit_input_tensor, track_input_tensor, MSeg_input_tensor, jet_input_tensor],
+                  outputs=[constit_output_tensor, track_output_tensor, MSeg_ouput_tensor, jet_output_tensor])
+
     print(model.summary())
