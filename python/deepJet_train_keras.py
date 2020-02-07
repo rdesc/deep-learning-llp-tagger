@@ -125,17 +125,11 @@ def train_llp(filename, useGPU2, constit_input, track_input, MSeg_input, jet_inp
     print("\nPreparing jet data...")
     X_train_jet, X_test_jet, X_val_jet = jet_input.extract_and_split_data(X_train, X_test, X_val, 'jet_pt', 'jet_phi')
 
-    # Assertions for size of matrices
-    assert X_train_constit.shape[1] / constit_input.num_features == constit_input.rows_max
-    assert X_train_track.shape[1] / track_input.num_features == track_input.rows_max
-    assert X_train_MSeg.shape[1] / MSeg_input.num_features == MSeg_input.rows_max
-    assert X_train_jet.shape[1] == jet_input.num_features
-
     # Done preparing inputs for model!!
     print("\nDone preparing data for model!!!\n")
 
     # Now to setup ML architecture
-    print("Setting up model architecture...\n")
+    print("\nSetting up model architecture...\n")
     # input shape = 3D tensor with shape: (batch, steps, channels)
     # output shape = 3D tensor with shape: (batch, new_steps, filters
 

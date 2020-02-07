@@ -12,9 +12,9 @@ class JetInput(ModelInput):
         val = X_val.loc[:, start:end]
 
         # print some details
-        print("\nShape: %.0f" % (train.shape[1]))
+        print("Shape: %.0f" % (train.shape[1]))
         print("Number of training examples %.0f" % (train.shape[0]))
         print("Number of testing examples %.0f" % (test.shape[0]))
-        print("Number of validating examples %.0f\n" % (val.shape[0]))
+        print("Number of validating examples %.0f" % (val.shape[0]))
 
         return train, test, val

@@ -1,3 +1,3 @@
---file_name=/fast_scratch/rdesc/processed_output_Lxy1500_Lz3000.pkl
+--file_name=/fast_scratch/rdesc/processed_output_Lxy1500_Lz3000_slim0.1.pkl
 --doTraining
 --useGPU2
