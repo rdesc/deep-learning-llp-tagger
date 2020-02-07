@@ -1,3 +1,6 @@
+from keras.layers import Input, Conv1D
+
+
 class ModelInput:
 
     def __init__(self, rows_max, num_features, layers_cnn, nodes_lstm):
@@ -21,3 +24,16 @@ class ModelInput:
         print("Number of validating examples %.0f" % (val.shape[0]))
 
         return train, test, val
+
+    def init_keras_cnn_input_output(self, shape, name, activation='relu'):
+        # input into first cnn layer
+        input_tensor = Input(shape=shape, dtype='float32', name=name)
+
+        # init output
+        output_tensor = Conv1D(filters=self.layers_cnn.pop(0), kernel_size=1, activation=activation, input_shape=shape)(
+            input_tensor)
+
+        for i in range(len(self.layers_cnn)):
+            output_tensor = Conv1D(filters=self.layers_cnn.pop(0), kernel_size=1, activation=activation)(output_tensor)
+
+        return input_tensor, output_tensor
