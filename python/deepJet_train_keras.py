@@ -52,7 +52,7 @@ def keras_setup():
     keras.backend.set_session(sess)
 
 
-def train_llp_cnn(filename, useGPU2, constit_input, track_input, MSeg_input, jet_input, frac=1.0):
+def train_llp(filename, useGPU2, constit_input, track_input, MSeg_input, jet_input, frac=1.0):
     # TODO: Delete time?
     # TODO: with parametrization?
 
@@ -65,7 +65,7 @@ def train_llp_cnn(filename, useGPU2, constit_input, track_input, MSeg_input, jet
         os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
     # Load dataset
-    print("Loading up dataset " + filename + "...\n")
+    print("\nLoading up dataset " + filename + "...\n")
     df = load_dataset(filename)
 
     # Extract labels
@@ -113,16 +113,16 @@ def train_llp_cnn(filename, useGPU2, constit_input, track_input, MSeg_input, jet
     # Split X into track, MSeg, and constit inputs and reshape dataframes into shape expected by Keras
     # This is an ordered array, so each input is formatted as number of constituents x number of variables
     print("\nPreparing train, test, and validate data for model...\n")
-    print("Preparing constit data...")
+    print("\nPreparing constit data...")
     X_train_constit, X_test_constit, X_val_constit = constit_input.extract_and_split_data(X_train, X_test, X_val,
                                                                                           'clus_pt_0', 'clus_time_')
-    print("Preparing track data...")
+    print("\nPreparing track data...")
     X_train_track, X_test_track, X_val_track = track_input.extract_and_split_data(X_train, X_test, X_val,
                                                                                   'nn_track_pt_0', 'nn_track_SCTHits_')
-    print("Preparing MSeg data...")
+    print("\nPreparing MSeg data...")
     X_train_MSeg, X_test_MSeg, X_val_MSeg = MSeg_input.extract_and_split_data(X_train, X_test, X_val,
                                                                               'nn_MSeg_etaPos_0', 'nn_MSeg_t0_')
-    print("Preparing jet data...")
+    print("\nPreparing jet data...")
     X_train_jet, X_test_jet, X_val_jet = jet_input.extract_and_split_data(X_train, X_test, X_val, 'jet_pt', 'jet_phi')
 
     # Assertions for size of matrices

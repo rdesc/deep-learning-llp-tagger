@@ -1,10 +1,10 @@
 import argparse
 import gc
-from deepJet_train_keras import train_llp
-from track_input import TrackInput
-from constit_input import ConstitInput
-from mseg_input import MSegInput
-from jet_input import JetInput
+from deepJet_train_keras import *
+from model_input.track_input import TrackInput
+from model_input.constit_input import ConstitInput
+from model_input.mseg_input import MSegInput
+from model_input.jet_input import JetInput
 
 parser = argparse.ArgumentParser(fromfile_prefix_chars='@')
 parser.add_argument('--file_name')

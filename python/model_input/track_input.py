@@ -1,4 +1,4 @@
-from model_input import ModelInput
+from model_input.model_input import ModelInput
 
 
 class TrackInput(ModelInput):

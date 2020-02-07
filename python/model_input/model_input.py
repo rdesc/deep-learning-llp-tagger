@@ -15,12 +15,9 @@ class ModelInput:
         val = val.values.reshape(val.shape[0], self.rows_max, self.num_features)
 
         # print some details
-        print("\nShape: %.0f x %.0f" % (train.shape[1], train.shape[2]))
-        # TODO: remove below 2 lines
-        print("Shape: %.0f x %.0f" % (test.shape[1], test.shape[2]))
-        print("Shape: %.0f x %.0f" % (val.shape[1], val.shape[2]))
+        print("Shape: %.0f x %.0f" % (train.shape[1], train.shape[2]))
         print("Number of training examples %.0f" % (train.shape[0]))
         print("Number of testing examples %.0f" % (test.shape[0]))
-        print("Number of validating examples %.0f\n" % (val.shape[0]))
+        print("Number of validating examples %.0f" % (val.shape[0]))
 
         return train, test, val
