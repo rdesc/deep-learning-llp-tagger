@@ -1,40 +1,16 @@
 import os
-import numpy as np
-import pandas as pd
 
 import matplotlib
 
 matplotlib.use('agg')
 
 import tensorflow as tf
-from keras.backend import tensorflow_backend as K
 
 import keras
-from keras.models import Sequential, Model
-from keras.layers import Dense, Activation, Highway, Dropout, Masking, CuDNNLSTM, Convolution1D, Convolution2D, Flatten, \
-    Input, Embedding, LSTM, Conv1D, GlobalAveragePooling1D, MaxPooling1D
-from keras.preprocessing import sequence
-from keras.callbacks import EarlyStopping, ModelCheckpoint, Callback
-from keras.optimizers import SGD, Adam, Adadelta, Adagrad, Adamax, RMSprop
-from keras.regularizers import l1, l2, L1L2
+from keras.models import Model
+from keras.layers import Dense, Dropout, concatenate
 from keras.utils import np_utils
-from keras.utils.vis_utils import plot_model
-import sklearn
-from sklearn.metrics import roc_curve
 from sklearn.model_selection import train_test_split
-
-from random import shuffle, seed
-
-from random import shuffle
-import pdb
-import sklearn
-from sklearn.preprocessing import minmax_scale
-import math
-import matplotlib.pyplot as plt
-
-from evaluate_training import *
-
-from datetime import datetime
 
 from utils import load_dataset
 
@@ -52,7 +28,8 @@ def keras_setup():
     keras.backend.set_session(sess)
 
 
-def train_llp(filename, useGPU2, constit_input, track_input, MSeg_input, jet_input, frac=1.0, reg_value=0.001):
+def train_llp(filename, useGPU2, constit_input, track_input, MSeg_input, jet_input,
+              frac=1.0, reg_value=0.001, dropout_value=0.1, epochs=50, learning_rate=0.002, hidden_fraction=1):
     # TODO: Delete time?
     # TODO: with parametrization?
 
@@ -74,7 +51,7 @@ def train_llp(filename, useGPU2, constit_input, track_input, MSeg_input, jet_inp
     weights = df['flatWeight']  # TODO: what are these weights for?
     # Keep mcWeights TODO: what is this? for evaluation
     mcWeights = df['mcEventWeight']
-    # Hard code start and end of names of variables # TODO: test in iPython
+    # Hard code start and end of names of variables
     X = df.loc[:, 'clus_pt_0':'nn_MSeg_t0_29']
     X = df.loc[:, 'jet_pt':'jet_phi'].join(X)
 
@@ -146,7 +123,42 @@ def train_llp(filename, useGPU2, constit_input, track_input, MSeg_input, jet_inp
     # Set up layers for jet
     jet_input_tensor, jet_output_tensor = jet_input.init_keras_dense_input_output(X_train_jet.values[0].shape)
 
-    model = Model(inputs=[constit_input_tensor, track_input_tensor, MSeg_input_tensor, jet_input_tensor],
-                  outputs=[constit_output_tensor, track_output_tensor, MSeg_ouput_tensor, jet_output_tensor])
+    # Setup concatenation layer
+    concat_tensor = concatenate([constit_output_tensor, track_output_tensor, MSeg_ouput_tensor, jet_output_tensor])
 
+    # Setup Dense + Dropout layers
+    concat_tensor = Dense(hidden_fraction * 512, activation='relu')(concat_tensor)
+    concat_tensor = Dropout(dropout_value)(concat_tensor)
+    concat_tensor = Dense(hidden_fraction * 64, activation='relu')(concat_tensor)
+    concat_tensor = Dropout(dropout_value)(concat_tensor)
+
+    # Setup final layer
+    main_output_tensor = Dense(3, activation='softmax', name='main_output')(concat_tensor)
+
+    # Setup training
+    layers_to_input = [constit_input_tensor, track_input_tensor, MSeg_input_tensor, jet_input_tensor]
+    layers_to_output = [main_output_tensor, constit_output_tensor, track_output_tensor, MSeg_ouput_tensor,
+                        jet_output_tensor]
+    x_to_train = [X_train_constit, X_train_track, X_train_MSeg, X_train_jet.values]
+    y_to_train = [y_train, y_train, y_train, y_train, y_train]
+    weights_to_train = [weights_train.values, weights_train.values, weights_train.values, weights_train.values,
+                        weights_train.values]
+
+    # Setup validation
+    x_to_validate = [X_test_constit, X_test_track, X_test_MSeg, X_test_jet.values]
+    y_to_validate = [y_test, y_test, y_test, y_test, y_test]
+    weights_to_validate = [weights_test.values, weights_test.values, weights_test.values, weights_test.values,
+                           weights_test.values]
+    weights_for_loss = [1., 0.01, 0.4, 0.1, 0.01]
+
+    # Setup Model
+    model = Model(inputs=layers_to_input, outputs=layers_to_output)
+
+    # Setup optimiser (Nadam is good as it has decaying learning rate) TODO: to look into maybe
+    optimizer = keras.optimizers.Nadam(lr=learning_rate, beta_1=0.9, beta_2=0.999, epsilon=None, schedule_decay=0.004)
+
+    # Compile Model
+    model.compile(optimizer=optimizer, loss='categorical_crossentropy', loss_weights=weights, metrics=['accuracy'])
+
+    # Show summary of model architecture
     print(model.summary())
