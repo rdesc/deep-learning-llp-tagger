@@ -116,15 +116,15 @@ def train_llp(filename, useGPU2, constit_input, track_input, MSeg_input, jet_inp
     MSeg_input_tensor, MSeg_ouput_tensor = MSeg_input.init_keras_cnn_input_output(X_train_MSeg[0].shape)
 
     # Set up LSTM layers + Dense layer for monitoring
-    constit_output_tensor = constit_input.init_keras_lstm(reg_value, constit_output_tensor)
-    track_output_tensor = track_input.init_keras_lstm(reg_value, track_output_tensor)
-    MSeg_ouput_tensor = MSeg_input.init_keras_lstm(reg_value, MSeg_ouput_tensor)
+    constit_output_tensor, constit_dense_tensor = constit_input.init_keras_lstm(reg_value, constit_output_tensor)
+    track_output_tensor, track_dense_tensor = track_input.init_keras_lstm(reg_value, track_output_tensor)
+    MSeg_ouput_tensor, MSeg_dense_tensor = MSeg_input.init_keras_lstm(reg_value, MSeg_ouput_tensor)
 
     # Set up layers for jet
     jet_input_tensor, jet_output_tensor = jet_input.init_keras_dense_input_output(X_train_jet.values[0].shape)
 
     # Setup concatenation layer
-    concat_tensor = concatenate([constit_output_tensor, track_output_tensor, MSeg_ouput_tensor, jet_output_tensor])
+    concat_tensor = concatenate([constit_output_tensor, track_output_tensor, MSeg_ouput_tensor, jet_input_tensor])
 
     # Setup Dense + Dropout layers
     concat_tensor = Dense(hidden_fraction * 512, activation='relu')(concat_tensor)
@@ -137,7 +137,7 @@ def train_llp(filename, useGPU2, constit_input, track_input, MSeg_input, jet_inp
 
     # Setup training
     layers_to_input = [constit_input_tensor, track_input_tensor, MSeg_input_tensor, jet_input_tensor]
-    layers_to_output = [main_output_tensor, constit_output_tensor, track_output_tensor, MSeg_ouput_tensor,
+    layers_to_output = [main_output_tensor, constit_dense_tensor, track_dense_tensor, MSeg_dense_tensor,
                         jet_output_tensor]
     x_to_train = [X_train_constit, X_train_track, X_train_MSeg, X_train_jet.values]
     y_to_train = [y_train, y_train, y_train, y_train, y_train]
@@ -158,7 +158,7 @@ def train_llp(filename, useGPU2, constit_input, track_input, MSeg_input, jet_inp
     optimizer = keras.optimizers.Nadam(lr=learning_rate, beta_1=0.9, beta_2=0.999, epsilon=None, schedule_decay=0.004)
 
     # Compile Model
-    model.compile(optimizer=optimizer, loss='categorical_crossentropy', loss_weights=weights, metrics=['accuracy'])
+    model.compile(optimizer=optimizer, loss='categorical_crossentropy', loss_weights=weights_for_loss, metrics=['accuracy'])
 
     # Show summary of model architecture
     print(model.summary())
