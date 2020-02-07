@@ -46,6 +46,7 @@ class ModelInput:
 
     def init_keras_lstm(self, reg_value, input_tensor, activation='softmax'):
         output_tensor = CuDNNLSTM(self.nodes_lstm, kernel_regularizer=L1L2(l1=reg_value, l2=reg_value))(input_tensor)
-
         # Dense layer tracks performances of LSTM
-        return Dense(3, activation=activation, name=self.name+'_output')(output_tensor)
+        dense_tensor = Dense(3, activation=activation, name=self.name+'_output')(output_tensor)
+
+        return output_tensor, dense_tensor
