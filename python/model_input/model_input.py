@@ -1,4 +1,5 @@
-from keras.layers import Input, Conv1D
+from keras.layers import Input, Conv1D, CuDNNLSTM
+from keras.regularizers import L1L2
 
 
 class ModelInput:
@@ -27,13 +28,20 @@ class ModelInput:
 
     def init_keras_cnn_input_output(self, shape, name, activation='relu'):
         # input into first cnn layer
-        input_tensor = Input(shape=shape, dtype='float32', name=name)
+        input_tensor = Input(shape=shape, dtype='float32', name=name+'_input')
 
         # init output
         output_tensor = Conv1D(filters=self.layers_cnn.pop(0), kernel_size=1, activation=activation, input_shape=shape)(
             input_tensor)
 
         for i in range(len(self.layers_cnn)):
-            output_tensor = Conv1D(filters=self.layers_cnn.pop(0), kernel_size=1, activation=activation)(output_tensor)
+            if len(self.layers_cnn) == 1:
+                output_tensor = Conv1D(filters=self.layers_cnn.pop(0), kernel_size=1, activation=activation,
+                                       name=name+'_final_conv1d')(output_tensor)
+            else:
+                output_tensor = Conv1D(filters=self.layers_cnn.pop(0), kernel_size=1, activation=activation)(output_tensor)
 
         return input_tensor, output_tensor
+
+    def init_keras_lstm(self, reg_value, input_tensor):
+        return CuDNNLSTM(self.nodes_lstm, kernel_regularizer=L1L2(l1=reg_value, l2=reg_value))(input_tensor)

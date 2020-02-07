@@ -52,7 +52,7 @@ def keras_setup():
     keras.backend.set_session(sess)
 
 
-def train_llp(filename, useGPU2, constit_input, track_input, MSeg_input, jet_input, frac=1.0):
+def train_llp(filename, useGPU2, constit_input, track_input, MSeg_input, jet_input, frac=1.0, reg_value=0.001):
     # TODO: Delete time?
     # TODO: with parametrization?
 
@@ -133,9 +133,16 @@ def train_llp(filename, useGPU2, constit_input, track_input, MSeg_input, jet_inp
     # input shape = 3D tensor with shape: (batch, steps, channels)
     # output shape = 3D tensor with shape: (batch, new_steps, filters
 
-    constit_input_tensor, constit_output_tensor = constit_input.init_keras_cnn_input_output(X_train_constit[0].shape, 'constit_input')
-    track_input_tensor, track_output_tensor = track_input.init_keras_cnn_input_output(X_train_track[0].shape, 'track_input')
-    MSeg_input_tensor, MSeg_ouput_tensor = MSeg_input.init_keras_cnn_input_output(X_train_MSeg[0].shape, 'MSeg_input')
+    # Set up inputs and outputs for Conv1D layers
+    constit_input_tensor, constit_output_tensor = constit_input.init_keras_cnn_input_output(X_train_constit[0].shape, 'constit')
+    track_input_tensor, track_output_tensor = track_input.init_keras_cnn_input_output(X_train_track[0].shape, 'track')
+    MSeg_input_tensor, MSeg_ouput_tensor = MSeg_input.init_keras_cnn_input_output(X_train_MSeg[0].shape, 'MSeg')
 
-    model = Model(inputs=[constit_input_tensor, track_input_tensor, MSeg_input_tensor], outputs=[constit_output_tensor, track_output_tensor, MSeg_ouput_tensor])
+    # Set up LSTM layers
+    constit_output_tensor = constit_input.init_keras_lstm(reg_value, constit_output_tensor)
+    track_output_tensor = track_input.init_keras_lstm(reg_value, track_output_tensor)
+    MSeg_ouput_tensor = MSeg_input.init_keras_lstm(reg_value, MSeg_ouput_tensor)
+
+    model = Model(inputs=[constit_input_tensor, track_input_tensor, MSeg_input_tensor],
+                  outputs=[constit_output_tensor, track_output_tensor, MSeg_ouput_tensor])
     print(model.summary())
