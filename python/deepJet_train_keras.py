@@ -1,18 +1,16 @@
 import os
-
 import matplotlib
-
-matplotlib.use('agg')
-
+import matplotlib.pyplot as plt
 import tensorflow as tf
-
 import keras
 from keras.models import Model
 from keras.layers import Dense, Dropout, concatenate
-from keras.utils import np_utils
+from keras.utils import np_utils, plot_model
+from keras.callbacks import EarlyStopping
 from sklearn.model_selection import train_test_split
-
 from utils import load_dataset
+
+matplotlib.use('agg')
 
 os.environ['MKL_NUM_THREADS'] = '16'
 os.environ['GOTO_NUM_THREADS'] = '16'
@@ -28,8 +26,11 @@ def keras_setup():
     keras.backend.set_session(sess)
 
 
-def train_llp(filename, useGPU2, constit_input, track_input, MSeg_input, jet_input,
-              frac=1.0, reg_value=0.001, dropout_value=0.1, epochs=50, learning_rate=0.002, hidden_fraction=1):
+# TODO: add docs
+
+
+def train_llp(filename, useGPU2, constit_input, track_input, MSeg_input, jet_input, plt_model=False, frac=1.0,
+              batch_size=5000, reg_value=0.001, dropout_value=0.1, epochs=50, learning_rate=0.002, hidden_fraction=1):
     # TODO: Delete time?
     # TODO: with parametrization?
 
@@ -58,7 +59,7 @@ def train_llp(filename, useGPU2, constit_input, track_input, MSeg_input, jet_inp
     # Label Z as parametrized variables
     Z = df.loc[:, 'llp_mH':'llp_mS']
     mass_array = (df.groupby(['llp_mH', 'llp_mS']).size().reset_index().rename(columns={0: 'count'}))
-    mass_array['proportion'] = mass_array['count'] / len(df.index)
+    mass_array['proportion'] = mass_array['count'] / len(df.index)  # TODO: never used??
 
     # Save memory
     del df
@@ -71,8 +72,8 @@ def train_llp(filename, useGPU2, constit_input, track_input, MSeg_input, jet_inp
     X_train = X_train.iloc[0:int(X_train.shape[0] * frac)]
     y_train = y_train.iloc[0:int(y_train.shape[0] * frac)]
     weights_train = weights_train.iloc[0:int(weights_train.shape[0] * frac)]
-    mcWeights_train = mcWeights_train.iloc[0:int(mcWeights_train.shape[0] * frac)]
-    Z_train = Z_train.iloc[0:int(Z_train.shape[0] * frac)]
+    mcWeights_train = mcWeights_train.iloc[0:int(mcWeights_train.shape[0] * frac)]  # TODO: never used??
+    Z_train = Z_train.iloc[0:int(Z_train.shape[0] * frac)]  # # TODO: never used??
 
     # Divide testing set into epoch-by-epoch validation and final evaluation sets
     X_test, X_val, y_test, y_val, weights_test, weights_val, mcWeights_test, mcWeights_val, Z_test, Z_val = \
@@ -107,8 +108,6 @@ def train_llp(filename, useGPU2, constit_input, track_input, MSeg_input, jet_inp
 
     # Now to setup ML architecture
     print("\nSetting up model architecture...\n")
-    # input shape = 3D tensor with shape: (batch, steps, channels)
-    # output shape = 3D tensor with shape: (batch, new_steps, filters
 
     # Set up inputs and outputs for Conv1D layers
     constit_input_tensor, constit_output_tensor = constit_input.init_keras_cnn_input_output(X_train_constit[0].shape)
@@ -149,7 +148,7 @@ def train_llp(filename, useGPU2, constit_input, track_input, MSeg_input, jet_inp
     y_to_validate = [y_test, y_test, y_test, y_test, y_test]
     weights_to_validate = [weights_test.values, weights_test.values, weights_test.values, weights_test.values,
                            weights_test.values]
-    weights_for_loss = [1., 0.01, 0.4, 0.1, 0.01]
+    weights_for_loss = [1., 0.01, 0.4, 0.1, 0.01]  # TODO: ??
 
     # Setup Model
     model = Model(inputs=layers_to_input, outputs=layers_to_output)
@@ -158,7 +157,48 @@ def train_llp(filename, useGPU2, constit_input, track_input, MSeg_input, jet_inp
     optimizer = keras.optimizers.Nadam(lr=learning_rate, beta_1=0.9, beta_2=0.999, epsilon=None, schedule_decay=0.004)
 
     # Compile Model
-    model.compile(optimizer=optimizer, loss='categorical_crossentropy', loss_weights=weights_for_loss, metrics=['accuracy'])
+    model.compile(optimizer=optimizer, loss='categorical_crossentropy', loss_weights=weights_for_loss,
+                  metrics=['accuracy'])
 
     # Show summary of model architecture
     print(model.summary())
+
+    # plot model architecture
+    if plt_model:
+        plot_model(model, show_shapes=True, to_file='model.png')
+
+    # Do training
+    print("\nStarting training...\n")
+    validation_data = (x_to_validate, y_to_validate, weights_to_validate)
+    callbacks = [EarlyStopping(verbose=True, patience=20, monitor='val_main_output_loss')]
+    # TODO: add ModelCheckpoint callback
+    history = model.fit(x_to_train, y_to_train, sample_weight=weights_to_train, epochs=epochs, batch_size=batch_size,
+                        validation_data=validation_data, callbacks=callbacks)
+
+    # TODO: write code for creating directories
+    # Plot training & validation accuracy values
+    print("\nPlotting training and validation plots...\n")
+    # Clear axes, figure, and figure window
+    plt.clf()
+    plt.cla()
+    plt.figure()
+    plt.plot(history.history['main_output_acc'])
+    plt.plot(history.history['val_main_output_acc'])
+    plt.title('Model accuracy')
+    plt.ylabel('Accuracy')
+    plt.xlabel('Epoch')
+    plt.legend(['Train', 'Test'], loc='upper left')
+    plt.savefig("accuracy_monitoring.pdf", format="pdf", transparent=True)
+    # Clear axes, figure, and figure window
+    plt.clf()
+    plt.cla()
+    plt.figure()
+
+    # Plot training & validation loss values
+    plt.plot(history.history['main_output_loss'])
+    plt.plot(history.history['val_main_output_loss'])
+    plt.title('Model loss')
+    plt.ylabel('Loss')
+    plt.xlabel('Epoch')
+    plt.legend(['Train', 'Test'], loc='upper left')
+    plt.savefig("loss_monitoring.pdf", format="pdf", transparent=True)
