@@ -7,6 +7,7 @@ from model_input.model_input import ModelInput
 parser = argparse.ArgumentParser(fromfile_prefix_chars='@')
 parser.add_argument('--file_name')
 parser.add_argument('--finalPlots_model')
+parser.add_argument('--model_to_do')
 parser.add_argument('--doTraining', action="store_true")
 parser.add_argument('--useGPU2', action="store_true")
 parser.add_argument('--makeFinalPlots', action="store_true")
@@ -20,6 +21,6 @@ if args.doTraining:
     jet_input = JetInput(name='jet', num_features=3)
 
     # Train model
-    train_llp(args.file_name, args.useGPU2, constit_input, track_input, MSeg_input, jet_input, frac=1.0)
+    train_llp(args.file_name, args.model_to_do, args.useGPU2, constit_input, track_input, MSeg_input, jet_input, frac=1.0)
     # Free up some memory
     gc.collect()

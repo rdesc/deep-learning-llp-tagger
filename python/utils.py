@@ -1,38 +1,22 @@
 import pandas as pd
 import numpy as np
 import os
+from datetime import datetime
 
-# TODO: fix
-def create_directories(model_to_do):
-    """Creates directories for keras outputs and plots
 
-    Parameters
-    ----------
-    model_to_do : the model
-    """
+def create_directories(model_to_do, filename):
+    # Append time/date to directory name
+    creation_time = str(datetime.now().strftime('%Y-%m-%d_%H:%M:%S/'))
+    dir_name = model_to_do + filename + creation_time
+
     # Create directories
-    dir_name = "plots/" + model_to_do
-    if not os.path.exists(dir_name):
-        os.mkdir(dir_name)
-        os.mkdir("plots/trainingDiagrams/" + model_to_do)
-        os.mkdir("keras_outputs/" + model_to_do)
-        print("Directory ", dir_name, " Created")
-    else:
-        print("Directory ", dir_name, " already exists")
+    os.makedirs("plots/" + dir_name)
+    print("Directory plots/" + dir_name + " created!")
 
-    destination = "plots/" + model_to_do + "/"
+    os.makedirs("keras_outputs/" + dir_name)
+    print("Directory keras_outputs/" + dir_name + " created!")
 
-    # Write a file with some details of architecture, will append final stats at end of training
-    f = open(destination + "training_details.txt", "w+")
-    f.write(
-        "\nnum_max_constits = %s\nnum_max_tracks = %s\nnum_max_MSegs = %s\nnum_constit_cnn = %s\nnum_track_cnn = %s\nnum_mseg_cnn = %s\n" % (
-            num_max_constits, num_max_tracks, num_max_MSegs, num_constit_cnn, num_track_cnn, num_mseg_cnn))
-    f.close()
-
-    # Print these stats to stdout
-    print(
-        "\nnum_max_constits = %s\nnum_max_tracks = %s\nnum_max_MSegs = %s\nnum_constit_cnn = %s\nnum_track_cnn = %s\nnum_mseg_cnn = %s\n" % (
-            num_max_constits, num_max_tracks, num_max_MSegs, num_constit_cnn, num_track_cnn, num_mseg_cnn))
+    return dir_name
 
 
 def load_dataset(filename):

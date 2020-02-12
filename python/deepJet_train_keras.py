@@ -6,9 +6,9 @@ import keras
 from keras.models import Model
 from keras.layers import Dense, Dropout, concatenate
 from keras.utils import np_utils, plot_model
-from keras.callbacks import EarlyStopping
+from keras.callbacks import EarlyStopping, ModelCheckpoint
 from sklearn.model_selection import train_test_split
-from utils import load_dataset
+from utils import load_dataset, create_directories
 
 matplotlib.use('agg')
 
@@ -29,13 +29,13 @@ def keras_setup():
 # TODO: add docs
 
 
-def train_llp(filename, useGPU2, constit_input, track_input, MSeg_input, jet_input, plt_model=False, frac=1.0,
+def train_llp(filename, model_to_do, useGPU2, constit_input, track_input, MSeg_input, jet_input, plt_model=False, frac=1.0,
               batch_size=5000, reg_value=0.001, dropout_value=0.1, epochs=50, learning_rate=0.002, hidden_fraction=1):
     # TODO: Delete time?
     # TODO: with parametrization?
 
     # Do Keras_setup
-    print("Setting up Keras...\n")
+    print("\nSetting up Keras...\n")
     keras_setup()
 
     # Choose GPU
@@ -163,19 +163,36 @@ def train_llp(filename, useGPU2, constit_input, track_input, MSeg_input, jet_inp
     # Show summary of model architecture
     print(model.summary())
 
+    # Setup directories
+    print("\nSetting up directories...\n")
+    dir_name = create_directories(model_to_do, filename)
+
+    # Write a file with some details of architecture, will append final stats at end of training
+    print("\nWriting to file training details...\n")
+    f = open("plots/" + dir_name + "/training_details.txt", "w+")
+    f.write("ModelInput objects\n")
+    f.write(str(vars(constit_input)) + "\n")
+    f.write(str(vars(track_input)) + "\n")
+    f.write(str(vars(MSeg_input)) + "\n")
+    f.write(str(vars(track_input)) + "\n")
+    f.write("\nOther hyperparameters\n")
+    f.write("frac = %s\n batch_size = %s\n reg_value = %s\n dropout_value = %s\n epochs = %s\n learning_rate = %s\n"
+            "hidden_fraction = %s\n" % (frac, batch_size, reg_value, dropout_value, epochs, learning_rate, hidden_fraction))
+    f.close()
+
     # plot model architecture
     if plt_model:
-        plot_model(model, show_shapes=True, to_file='model.png')
+        plot_model(model, show_shapes=True, to_file='plots/' + dir_name + '/model.png')
 
     # Do training
     print("\nStarting training...\n")
     validation_data = (x_to_validate, y_to_validate, weights_to_validate)
-    callbacks = [EarlyStopping(verbose=True, patience=20, monitor='val_main_output_loss')]
-    # TODO: add ModelCheckpoint callback
+    callbacks = [EarlyStopping(verbose=True, patience=20, monitor='val_main_output_loss'),
+                 ModelCheckpoint('keras_outputs/' + dir_name + '/checkpoint', monitor='val_main_output_loss',
+                                 verbose=True, save_best_only=True)]
     history = model.fit(x_to_train, y_to_train, sample_weight=weights_to_train, epochs=epochs, batch_size=batch_size,
                         validation_data=validation_data, callbacks=callbacks)
 
-    # TODO: write code for creating directories
     # Plot training & validation accuracy values
     print("\nPlotting training and validation plots...\n")
     # Clear axes, figure, and figure window
@@ -188,7 +205,7 @@ def train_llp(filename, useGPU2, constit_input, track_input, MSeg_input, jet_inp
     plt.ylabel('Accuracy')
     plt.xlabel('Epoch')
     plt.legend(['Train', 'Test'], loc='upper left')
-    plt.savefig("accuracy_monitoring.pdf", format="pdf", transparent=True)
+    plt.savefig("plots/" + dir_name + "/accuracy_monitoring.pdf", format="pdf", transparent=True)
     # Clear axes, figure, and figure window
     plt.clf()
     plt.cla()
@@ -201,4 +218,4 @@ def train_llp(filename, useGPU2, constit_input, track_input, MSeg_input, jet_inp
     plt.ylabel('Loss')
     plt.xlabel('Epoch')
     plt.legend(['Train', 'Test'], loc='upper left')
-    plt.savefig("loss_monitoring.pdf", format="pdf", transparent=True)
+    plt.savefig("plots/" + dir_name + "/loss_monitoring.pdf", format="pdf", transparent=True)
