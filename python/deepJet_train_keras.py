@@ -165,7 +165,7 @@ def train_llp(filename, model_to_do, useGPU2, constit_input, track_input, MSeg_i
 
     # Setup directories
     print("\nSetting up directories...\n")
-    dir_name = create_directories(model_to_do, os.path.split(filename)[1])
+    dir_name = create_directories(model_to_do, os.path.split(os.path.splitext(filename)[0])[1])
 
     # Write a file with some details of architecture, will append final stats at end of training
     print("\nWriting to file training details...\n")
