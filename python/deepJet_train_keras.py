@@ -230,4 +230,5 @@ def train_llp(filename, model_to_do, useGPU2, constit_input, track_input, MSeg_i
 
     # Evaluate Model with ROC curves
     print("\nEvaluating model...\n")
-    evaluate_model(dir_name, x_to_validate, y_test, Z_test, mcWeights_test)
+    # TODO: improve doc on Z and mcWeights, and improve naming _val vs. _test
+    evaluate_model(dir_name, X_val, y_val, Z_val, mcWeights_val)
