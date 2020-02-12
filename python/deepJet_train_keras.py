@@ -165,7 +165,7 @@ def train_llp(filename, model_to_do, useGPU2, constit_input, track_input, MSeg_i
 
     # Setup directories
     print("\nSetting up directories...\n")
-    dir_name = create_directories(model_to_do, filename)
+    dir_name = create_directories(model_to_do, os.path.split(filename)[1])
 
     # Write a file with some details of architecture, will append final stats at end of training
     print("\nWriting to file training details...\n")
@@ -176,7 +176,7 @@ def train_llp(filename, model_to_do, useGPU2, constit_input, track_input, MSeg_i
     f.write(str(vars(MSeg_input)) + "\n")
     f.write(str(vars(track_input)) + "\n")
     f.write("\nOther hyperparameters\n")
-    f.write("frac = %s\n batch_size = %s\n reg_value = %s\n dropout_value = %s\n epochs = %s\n learning_rate = %s\n"
+    f.write("frac = %s\nbatch_size = %s\nreg_value = %s\ndropout_value = %s\nepochs = %s\nlearning_rate = %s\n"
             "hidden_fraction = %s\n" % (frac, batch_size, reg_value, dropout_value, epochs, learning_rate, hidden_fraction))
     f.close()
 
