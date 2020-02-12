@@ -2,6 +2,10 @@ import pandas as pd
 import numpy as np
 import os
 from datetime import datetime
+from keras.models import load_model
+import matplotlib.pyplot as plt
+from evaluate_training import find_threshold, signal_llp_efficiencies, bkg_falsePositives,\
+    make_multi_roc_curve, plot_prediction_histograms
 
 
 def create_directories(model_to_do, filename):
@@ -44,3 +48,84 @@ def load_dataset(filename):
     print("Length of BIB is: " + str(df[df.label == 2].shape[0]))
 
     return df
+
+
+def evaluate_model(dir_name, x_test, y_test, Z_test, mcWeights_test):
+    # TODO: refactor
+    # get untrained compiled model
+    model = load_model("keras_outputs/" + dir_name + '/model.h5')
+    # load weights
+    model.load_weights('keras_outputs/' + dir_name + '/model_weights.h5')
+    # make predictions
+    prediction = model.predict(x_test, verbose=True)
+    prediction = prediction[0]  # TODO check
+
+    # Sum of MC weights
+    bib_weight = np.sum(mcWeights_test[y_test == 2])
+    sig_weight = np.sum(mcWeights_test[y_test == 1])
+    qcd_weight = np.sum(mcWeights_test[y_test == 0])
+
+    bib_weight_length = len(mcWeights_test[y_test == 2])
+    sig_weight_length = len(mcWeights_test[y_test == 1])
+    qcd_weight_length = len(mcWeights_test[y_test == 0])
+
+    mcWeights_test[y_test == 0] *= qcd_weight_length / qcd_weight
+    mcWeights_test[y_test == 2] *= bib_weight_length / bib_weight
+    mcWeights_test[y_test == 1] *= sig_weight_length / sig_weight
+    destination = "plots/" + dir_name + "/"
+    plot_prediction_histograms(destination, prediction, y_test, mcWeights_test, dir_name)
+
+    # This will be the BIB efficiencies to aim for when making family of ROC curves
+    threshold_array = [(1 - 0.0316)]
+    counter = 0
+    # Third label: the label of the class we are doing a 'family' of. Other two classes will make the ROC curve
+    third_label = 2
+    # We'll be writing the stats to training_details.txt
+    f = open(destination + "training_details.txt", "a")
+    f.write("\nEvaluation metrics\n")
+
+    # Loop over all arrays in threshold_array
+    for item in threshold_array:
+        # Convert decimal to percentage (code used was in percentage, oh well)
+        test_perc = item * 100
+        test_label = third_label
+
+        # Find threshold, or at what label we will have the required percentage of 'test_label' correctl predicted
+        test_threshold, leftovers = find_threshold(prediction, y_test, mcWeights_test, test_perc, test_label)
+        # Make ROC curve of leftovers, those not tagged by above function
+        bkg_eff, tag_eff, roc_auc = make_multi_roc_curve(prediction, y_test, mcWeights_test, test_threshold, test_label,
+                                                         leftovers)
+        # Write AUC to training_details.txt
+        f.write("%s, %s\n" % (str(-item + 1), str(roc_auc)))
+        print("AUC: " + str(roc_auc))
+        # Make ROC curve
+        plt.plot(tag_eff, bkg_eff, label=f"BIB Eff: {item :.3f}" + f", AUC: {roc_auc:.3f}")
+        plt.xlabel("LLP Tagging Efficiency")
+        axes = plt.gca()
+        axes.set_xlim([0, 1])
+        counter = counter + 1
+
+    # Finish and plot ROC curve family
+    plt.legend()
+    plt.yscale('log', nonposy='clip')
+    signal_test = prediction[y_test == 1]
+    qcd_test = prediction[y_test == 0]
+
+    print(signal_test[0:100].shape)
+    print("Length of Signal: " + str(len(signal_test)) + ", length of signal with weight 1: " + str(
+        len(signal_test[signal_test[:, 1] < 0.1])))
+    print("Length of QCD: " + str(len(qcd_test)) + ", length of qcd with weight 1: " + str(
+        len(qcd_test[qcd_test[:, 1] < 0.1])))
+    if third_label == 2:
+        plt.ylabel("QCD Rejection")
+        plt.savefig(destination + "roc_curve_atlas_rej_bib" + ".pdf", format='pdf', transparent=True)
+    if third_label == 0:
+        plt.ylabel("BIB Rejection")
+        plt.savefig(destination + "roc_curve_atlas_rej_qcd" + ".pdf", format='pdf', transparent=True)
+    plt.clf()
+    plt.cla()
+    # Make plots of signal efficiency vs mH, mS
+    signal_llp_efficiencies(prediction, y_test, Z_test, destination, f)
+    bkg_falsePositives(prediction, y_test, Z_test, destination, f)
+    f.close()
+

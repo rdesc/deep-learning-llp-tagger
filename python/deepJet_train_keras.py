@@ -8,7 +8,7 @@ from keras.layers import Dense, Dropout, concatenate
 from keras.utils import np_utils, plot_model
 from keras.callbacks import EarlyStopping, ModelCheckpoint
 from sklearn.model_selection import train_test_split
-from utils import load_dataset, create_directories
+from utils import load_dataset, create_directories, evaluate_model
 
 matplotlib.use('agg')
 
@@ -177,6 +177,9 @@ def train_llp(filename, model_to_do, useGPU2, constit_input, track_input, MSeg_i
     model.compile(optimizer=optimizer, loss='categorical_crossentropy', loss_weights=weights_for_loss,
                   metrics=['accuracy'])
 
+    # Save model configuration for evaluation step
+    model.save('keras_outputs/' + dir_name + '/model.h5')  # creates a HDF5 file
+
     # Show summary of model architecture
     print(model.summary())
 
@@ -192,6 +195,9 @@ def train_llp(filename, model_to_do, useGPU2, constit_input, track_input, MSeg_i
                                  verbose=True, save_best_only=True)]
     history = model.fit(x_to_train, y_to_train, sample_weight=weights_to_train, epochs=epochs, batch_size=batch_size,
                         validation_data=validation_data, callbacks=callbacks)
+
+    # Save model weights
+    model.save_weights('keras_outputs/' + dir_name + '/model_weights.h5')
 
     # Plot training & validation accuracy values
     print("\nPlotting training and validation plots...\n")
@@ -219,3 +225,9 @@ def train_llp(filename, model_to_do, useGPU2, constit_input, track_input, MSeg_i
     plt.xlabel('Epoch')
     plt.legend(['Train', 'Test'], loc='upper left')
     plt.savefig("plots/" + dir_name + "/loss_monitoring.pdf", format="pdf", transparent=True)
+
+    del model  # deletes the existing model
+
+    # Evaluate Model with ROC curves
+    print("\nEvaluating model...\n")
+    evaluate_model(dir_name, x_to_validate, y_test, Z_test, mcWeights_test)
