@@ -7,7 +7,7 @@ from datetime import datetime
 def create_directories(model_to_do, filename):
     # Append time/date to directory name
     creation_time = str(datetime.now().strftime('%Y-%m-%d_%H:%M:%S/'))
-    dir_name = model_to_do + filename + creation_time
+    dir_name = model_to_do + filename + "_" + creation_time
 
     # Create directories
     os.makedirs("plots/" + dir_name)

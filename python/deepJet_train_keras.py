@@ -34,6 +34,23 @@ def train_llp(filename, model_to_do, useGPU2, constit_input, track_input, MSeg_i
     # TODO: Delete time?
     # TODO: with parametrization?
 
+    # Setup directories
+    print("\nSetting up directories...\n")
+    dir_name = create_directories(model_to_do, os.path.split(os.path.splitext(filename)[0])[1])
+
+    # Write a file with some details of architecture, will append final stats at end of training
+    print("\nWriting to file training details...\n")
+    f = open("plots/" + dir_name + "/training_details.txt", "w+")
+    f.write("ModelInput objects\n")
+    f.write(str(vars(constit_input)) + "\n")
+    f.write(str(vars(track_input)) + "\n")
+    f.write(str(vars(MSeg_input)) + "\n")
+    f.write(str(vars(track_input)) + "\n")
+    f.write("\nOther hyperparameters\n")
+    f.write("frac = %s\nbatch_size = %s\nreg_value = %s\ndropout_value = %s\nepochs = %s\nlearning_rate = %s\n"
+            "hidden_fraction = %s\n" % (frac, batch_size, reg_value, dropout_value, epochs, learning_rate, hidden_fraction))
+    f.close()
+
     # Do Keras_setup
     print("\nSetting up Keras...\n")
     keras_setup()
@@ -162,23 +179,6 @@ def train_llp(filename, model_to_do, useGPU2, constit_input, track_input, MSeg_i
 
     # Show summary of model architecture
     print(model.summary())
-
-    # Setup directories
-    print("\nSetting up directories...\n")
-    dir_name = create_directories(model_to_do, os.path.split(os.path.splitext(filename)[0])[1])
-
-    # Write a file with some details of architecture, will append final stats at end of training
-    print("\nWriting to file training details...\n")
-    f = open("plots/" + dir_name + "/training_details.txt", "w+")
-    f.write("ModelInput objects\n")
-    f.write(str(vars(constit_input)) + "\n")
-    f.write(str(vars(track_input)) + "\n")
-    f.write(str(vars(MSeg_input)) + "\n")
-    f.write(str(vars(track_input)) + "\n")
-    f.write("\nOther hyperparameters\n")
-    f.write("frac = %s\nbatch_size = %s\nreg_value = %s\ndropout_value = %s\nepochs = %s\nlearning_rate = %s\n"
-            "hidden_fraction = %s\n" % (frac, batch_size, reg_value, dropout_value, epochs, learning_rate, hidden_fraction))
-    f.close()
 
     # plot model architecture
     if plt_model:
