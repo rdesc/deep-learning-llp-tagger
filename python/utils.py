@@ -25,7 +25,6 @@ def create_directories(model_to_do, filename):
 
 def load_dataset(filename):
     # Load dataset
-    print("\nLoading file " + filename + "...\n")
     df = pd.read_pickle(filename)
     # Replace infs with nans
     df = df.replace([np.inf, -np.inf], np.nan)

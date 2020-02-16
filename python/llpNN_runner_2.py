@@ -41,9 +41,9 @@ if args.doTraining:
 
         # TODO: add loop to iterate over each model architecture
         # Initialize input objects
-        constit_input = ModelInput(name='constit', rows_max=30, num_features=12, layers_cnn=[64, 32, 32, 8], nodes_lstm=60)
-        track_input = ModelInput(name='track', rows_max=20, num_features=13, layers_cnn=[64, 32, 32, 8], nodes_lstm=60)
-        MSeg_input = ModelInput(name='MSeg', rows_max=30, num_features=6, layers_cnn=[32, 16, 4], nodes_lstm=25)
+        constit_input = ModelInput(name='constit', rows_max=30, num_features=12, filters_cnn=[64, 32, 32, 8], nodes_lstm=60)
+        track_input = ModelInput(name='track', rows_max=20, num_features=13, filters_cnn=[64, 32, 32, 8], nodes_lstm=60)
+        MSeg_input = ModelInput(name='MSeg', rows_max=30, num_features=6, filters_cnn=[32, 16, 4], nodes_lstm=25)
         jet_input = JetInput(name='jet', num_features=3)
 
         # Train model

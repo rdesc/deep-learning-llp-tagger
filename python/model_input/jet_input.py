@@ -4,8 +4,8 @@ from model_input.model_input import ModelInput
 
 class JetInput(ModelInput):
 
-    def __init__(self, name, rows_max=0, num_features=0, layers_cnn=0, nodes_lstm=0):
-        ModelInput.__init__(self, name, rows_max, num_features, layers_cnn, nodes_lstm)
+    def __init__(self, name, rows_max=0, num_features=0, filters_cnn=0, nodes_lstm=0):
+        ModelInput.__init__(self, name, rows_max, num_features, filters_cnn, nodes_lstm)
 
     def extract_and_split_data(self, X_train, X_test, X_val, start, end):
         train = X_train.loc[:, start:end]
