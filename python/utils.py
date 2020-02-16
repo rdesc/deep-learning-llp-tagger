@@ -25,6 +25,7 @@ def create_directories(model_to_do, filename):
 
 def load_dataset(filename):
     # Load dataset
+    print("\nLoading file " + filename + "...\n")
     df = pd.read_pickle(filename)
     # Replace infs with nans
     df = df.replace([np.inf, -np.inf], np.nan)
@@ -50,12 +51,8 @@ def load_dataset(filename):
     return df
 
 
-def evaluate_model(dir_name, X, y, Z, mcWeights):
+def evaluate_model(model, dir_name, X, y, Z, mcWeights):
     # TODO: refactor
-    # get untrained compiled model
-    model = load_model("keras_outputs/" + dir_name + '/model.h5')
-    # load weights
-    model.load_weights('keras_outputs/' + dir_name + '/model_weights.h5')
     # make predictions
     prediction = model.predict(X, verbose=True)
     prediction = prediction[0]  # TODO check

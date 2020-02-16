@@ -18,21 +18,11 @@ os.environ['OMP_NUM_THREADS'] = '16'
 os.environ['openmp'] = 'True'
 os.environ['exception_verbosity'] = 'high'
 
-
-def keras_setup():
-    session_conf = tf.ConfigProto(intra_op_parallelism_threads=64, inter_op_parallelism_threads=64)
-    tf.set_random_seed(1)
-    sess = tf.Session(graph=tf.get_default_graph(), config=session_conf)
-    keras.backend.set_session(sess)
-
-
 # TODO: add docs
 
 
 def train_llp(filename, model_to_do, useGPU2, constit_input, track_input, MSeg_input, jet_input, plt_model=False, frac=1.0,
               batch_size=5000, reg_value=0.001, dropout_value=0.1, epochs=50, learning_rate=0.002, hidden_fraction=1):
-    # TODO: Delete time?
-    # TODO: with parametrization?
 
     # Setup directories
     print("\nSetting up directories...\n")
@@ -125,67 +115,28 @@ def train_llp(filename, model_to_do, useGPU2, constit_input, track_input, MSeg_i
 
     # Now to setup ML architecture
     print("\nSetting up model architecture...\n")
+    model = setup_model_architecture(constit_input, track_input, MSeg_input, jet_input, X_train_constit, X_train_track,
+                                     X_train_MSeg, X_train_jet, reg_value, hidden_fraction, learning_rate, dropout_value)
 
-    # Set up inputs and outputs for Conv1D layers
-    constit_input_tensor, constit_output_tensor = constit_input.init_keras_cnn_input_output(X_train_constit[0].shape)
-    track_input_tensor, track_output_tensor = track_input.init_keras_cnn_input_output(X_train_track[0].shape)
-    MSeg_input_tensor, MSeg_ouput_tensor = MSeg_input.init_keras_cnn_input_output(X_train_MSeg[0].shape)
-
-    # Set up LSTM layers + Dense layer for monitoring
-    constit_output_tensor, constit_dense_tensor = constit_input.init_keras_lstm(reg_value, constit_output_tensor)
-    track_output_tensor, track_dense_tensor = track_input.init_keras_lstm(reg_value, track_output_tensor)
-    MSeg_ouput_tensor, MSeg_dense_tensor = MSeg_input.init_keras_lstm(reg_value, MSeg_ouput_tensor)
-
-    # Set up layers for jet
-    jet_input_tensor, jet_output_tensor = jet_input.init_keras_dense_input_output(X_train_jet.values[0].shape)
-
-    # Setup concatenation layer
-    concat_tensor = concatenate([constit_output_tensor, track_output_tensor, MSeg_ouput_tensor, jet_input_tensor])
-
-    # Setup Dense + Dropout layers
-    concat_tensor = Dense(hidden_fraction * 512, activation='relu')(concat_tensor)
-    concat_tensor = Dropout(dropout_value)(concat_tensor)
-    concat_tensor = Dense(hidden_fraction * 64, activation='relu')(concat_tensor)
-    concat_tensor = Dropout(dropout_value)(concat_tensor)
-
-    # Setup final layer
-    main_output_tensor = Dense(3, activation='softmax', name='main_output')(concat_tensor)
-
-    # Setup training
-    layers_to_input = [constit_input_tensor, track_input_tensor, MSeg_input_tensor, jet_input_tensor]
-    layers_to_output = [main_output_tensor, constit_dense_tensor, track_dense_tensor, MSeg_dense_tensor,
-                        jet_output_tensor]
-    x_to_train = [X_train_constit, X_train_track, X_train_MSeg, X_train_jet.values]
-    y_to_train = [y_train, y_train, y_train, y_train, y_train]
-    weights_to_train = [weights_train.values, weights_train.values, weights_train.values, weights_train.values,
-                        weights_train.values]
+    # Save model configuration for evaluation step FIXME does not currently work
+    model.save('keras_outputs/' + dir_name + '/model.h5')  # creates a HDF5 file
+    # Show summary of model architecture
+    print(model.summary())
+    # plot model architecture
+    if plt_model:
+        plot_model(model, show_shapes=True, to_file='plots/' + dir_name + '/model.png')
 
     # Setup validation
     x_to_validate = [X_test_constit, X_test_track, X_test_MSeg, X_test_jet.values]
     y_to_validate = [y_test, y_test, y_test, y_test, y_test]
     weights_to_validate = [weights_test.values, weights_test.values, weights_test.values, weights_test.values,
                            weights_test.values]
-    weights_for_loss = [1., 0.01, 0.4, 0.1, 0.01]  # TODO: ??
 
-    # Setup Model
-    model = Model(inputs=layers_to_input, outputs=layers_to_output)
-
-    # Setup optimiser (Nadam is good as it has decaying learning rate) TODO: to look into maybe
-    optimizer = keras.optimizers.Nadam(lr=learning_rate, beta_1=0.9, beta_2=0.999, epsilon=None, schedule_decay=0.004)
-
-    # Compile Model
-    model.compile(optimizer=optimizer, loss='categorical_crossentropy', loss_weights=weights_for_loss,
-                  metrics=['accuracy'])
-
-    # Save model configuration for evaluation step
-    model.save('keras_outputs/' + dir_name + '/model.h5')  # creates a HDF5 file
-
-    # Show summary of model architecture
-    print(model.summary())
-
-    # plot model architecture
-    if plt_model:
-        plot_model(model, show_shapes=True, to_file='plots/' + dir_name + '/model.png')
+    # Setup training weights and data
+    x_to_train = [X_train_constit, X_train_track, X_train_MSeg, X_train_jet.values]
+    y_to_train = [y_train, y_train, y_train, y_train, y_train]
+    weights_to_train = [weights_train.values, weights_train.values, weights_train.values, weights_train.values,
+                        weights_train.values]
 
     # Do training
     print("\nStarting training...\n")
@@ -227,8 +178,63 @@ def train_llp(filename, model_to_do, useGPU2, constit_input, track_input, MSeg_i
     plt.savefig("plots/" + dir_name + "/loss_monitoring.pdf", format="pdf", transparent=True)
 
     del model  # deletes the existing model
+    # initialize model with same architecture
+    model = setup_model_architecture(constit_input, track_input, MSeg_input, jet_input, X_train_constit, X_train_track,
+                                     X_train_MSeg, X_train_jet, reg_value, hidden_fraction, learning_rate, dropout_value)
+    # load weights
+    model.load_weights('keras_outputs/' + dir_name + '/model_weights.h5')
 
     # Evaluate Model with ROC curves
     print("\nEvaluating model...\n")
     # TODO: improve doc on Z and mcWeights, and improve naming _val vs. _test
-    evaluate_model(dir_name, X_val, y_val, Z_val, mcWeights_val)
+    evaluate_model(model, dir_name, X_val, y_val, Z_val, mcWeights_val)
+
+
+def setup_model_architecture(constit_input, track_input, MSeg_input, jet_input, X_train_constit, X_train_track,
+                             X_train_MSeg, X_train_jet, reg_value, hidden_fraction, learning_rate, dropout_value):
+    # Set up inputs and outputs for Conv1D layers
+    constit_input_tensor, constit_output_tensor = constit_input.init_keras_cnn_input_output(X_train_constit[0].shape)
+    track_input_tensor, track_output_tensor = track_input.init_keras_cnn_input_output(X_train_track[0].shape)
+    MSeg_input_tensor, MSeg_ouput_tensor = MSeg_input.init_keras_cnn_input_output(X_train_MSeg[0].shape)
+
+    # Set up LSTM layers + Dense layer for monitoring
+    constit_output_tensor, constit_dense_tensor = constit_input.init_keras_lstm(reg_value, constit_output_tensor)
+    track_output_tensor, track_dense_tensor = track_input.init_keras_lstm(reg_value, track_output_tensor)
+    MSeg_ouput_tensor, MSeg_dense_tensor = MSeg_input.init_keras_lstm(reg_value, MSeg_ouput_tensor)
+
+    # Set up layers for jet
+    jet_input_tensor, jet_output_tensor = jet_input.init_keras_dense_input_output(X_train_jet.values[0].shape)
+    # Setup concatenation layer
+    concat_tensor = concatenate([constit_output_tensor, track_output_tensor, MSeg_ouput_tensor, jet_input_tensor])
+    # Setup Dense + Dropout layers
+    concat_tensor = Dense(hidden_fraction * 512, activation='relu')(concat_tensor)
+    concat_tensor = Dropout(dropout_value)(concat_tensor)
+    concat_tensor = Dense(hidden_fraction * 64, activation='relu')(concat_tensor)
+    concat_tensor = Dropout(dropout_value)(concat_tensor)
+    # Setup final layer
+    main_output_tensor = Dense(3, activation='softmax', name='main_output')(concat_tensor)
+
+    # Setup training layers
+    layers_to_input = [constit_input_tensor, track_input_tensor, MSeg_input_tensor, jet_input_tensor]
+    layers_to_output = [main_output_tensor, constit_dense_tensor, track_dense_tensor, MSeg_dense_tensor,
+                        jet_output_tensor]
+    weights_for_loss = [1., 0.01, 0.4, 0.1, 0.01]  # TODO: ??
+
+    # Setup Model
+    model = Model(inputs=layers_to_input, outputs=layers_to_output)
+
+    # Setup optimiser (Nadam is good as it has decaying learning rate) TODO: to look into maybe
+    optimizer = keras.optimizers.Nadam(lr=learning_rate, beta_1=0.9, beta_2=0.999, epsilon=None, schedule_decay=0.004)
+
+    # Compile Model
+    model.compile(optimizer=optimizer, loss='categorical_crossentropy', loss_weights=weights_for_loss,
+                  metrics=['accuracy'])
+
+    return model
+
+
+def keras_setup():
+    session_conf = tf.ConfigProto(intra_op_parallelism_threads=64, inter_op_parallelism_threads=64)
+    tf.set_random_seed(1)
+    sess = tf.Session(graph=tf.get_default_graph(), config=session_conf)
+    keras.backend.set_session(sess)
