@@ -36,7 +36,7 @@ def train_llp(filename, model_to_do, useGPU2, constit_input, track_input, MSeg_i
     f.write(str(vars(constit_input)) + "\n")
     f.write(str(vars(track_input)) + "\n")
     f.write(str(vars(MSeg_input)) + "\n")
-    f.write(str(vars(track_input)) + "\n")
+    f.write(str(vars(jet_input)) + "\n")
     f.write("\nOther hyperparameters\n")
     f.write("frac = %s\nbatch_size = %s\nreg_value = %s\ndropout_value = %s\nepochs = %s\nlearning_rate = %s\n"
             "hidden_fraction = %s\n" % (
@@ -217,8 +217,8 @@ def setup_model_architecture(constit_input, track_input, MSeg_input, jet_input, 
 
     # Setup training layers
     layers_to_input = [constit_input_tensor, track_input_tensor, MSeg_input_tensor, jet_input_tensor]
-    layers_to_output = list(filter(None, [main_output_tensor, constit_dense_tensor, track_dense_tensor,
-                                          MSeg_dense_tensor, jet_output_tensor]))  # remove tensors set to None
+    layers_to_output = [main_output_tensor, constit_dense_tensor, track_dense_tensor,
+                                          MSeg_dense_tensor, jet_output_tensor]  # remove tensors set to None
     weights_for_loss = [1., 0.01, 0.4, 0.1, 0.01]  # TODO: ??
 
     # Setup Model
