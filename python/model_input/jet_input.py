@@ -3,6 +3,9 @@ from model_input.model_input import ModelInput
 
 
 class JetInput(ModelInput):
+    """
+        This is a subclass for jet input to the model
+    """
 
     def __init__(self, name, rows_max=0, num_features=0, filters_cnn=0, nodes_lstm=0):
         ModelInput.__init__(self, name, rows_max, num_features, filters_cnn, nodes_lstm)

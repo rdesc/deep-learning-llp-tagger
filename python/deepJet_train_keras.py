@@ -18,12 +18,13 @@ os.environ['OMP_NUM_THREADS'] = '16'
 os.environ['openmp'] = 'True'
 os.environ['exception_verbosity'] = 'high'
 
+
 # TODO: add docs
 
 
-def train_llp(filename, model_to_do, useGPU2, constit_input, track_input, MSeg_input, jet_input, plt_model=False, frac=1.0,
+def train_llp(filename, model_to_do, useGPU2, constit_input, track_input, MSeg_input, jet_input, plt_model=False,
+              frac=1.0,
               batch_size=5000, reg_value=0.001, dropout_value=0.1, epochs=50, learning_rate=0.002, hidden_fraction=1):
-
     # Setup directories
     print("\nSetting up directories...\n")
     dir_name = create_directories(model_to_do, os.path.split(os.path.splitext(filename)[0])[1])
@@ -38,7 +39,8 @@ def train_llp(filename, model_to_do, useGPU2, constit_input, track_input, MSeg_i
     f.write(str(vars(track_input)) + "\n")
     f.write("\nOther hyperparameters\n")
     f.write("frac = %s\nbatch_size = %s\nreg_value = %s\ndropout_value = %s\nepochs = %s\nlearning_rate = %s\n"
-            "hidden_fraction = %s\n" % (frac, batch_size, reg_value, dropout_value, epochs, learning_rate, hidden_fraction))
+            "hidden_fraction = %s\n" % (
+            frac, batch_size, reg_value, dropout_value, epochs, learning_rate, hidden_fraction))
     f.close()
 
     # Do Keras_setup
@@ -116,7 +118,8 @@ def train_llp(filename, model_to_do, useGPU2, constit_input, track_input, MSeg_i
     # Now to setup ML architecture
     print("\nSetting up model architecture...\n")
     model = setup_model_architecture(constit_input, track_input, MSeg_input, jet_input, X_train_constit, X_train_track,
-                                     X_train_MSeg, X_train_jet, reg_value, hidden_fraction, learning_rate, dropout_value)
+                                     X_train_MSeg, X_train_jet, reg_value, hidden_fraction, learning_rate,
+                                     dropout_value)
 
     # Save model configuration for evaluation step FIXME does not currently work
     model.save('keras_outputs/' + dir_name + '/model.h5')  # creates a HDF5 file
@@ -180,7 +183,8 @@ def train_llp(filename, model_to_do, useGPU2, constit_input, track_input, MSeg_i
     del model  # deletes the existing model
     # initialize model with same architecture
     model = setup_model_architecture(constit_input, track_input, MSeg_input, jet_input, X_train_constit, X_train_track,
-                                     X_train_MSeg, X_train_jet, reg_value, hidden_fraction, learning_rate, dropout_value)
+                                     X_train_MSeg, X_train_jet, reg_value, hidden_fraction, learning_rate,
+                                     dropout_value)
     # load weights
     model.load_weights('keras_outputs/' + dir_name + '/model_weights.h5')
 
@@ -192,15 +196,12 @@ def train_llp(filename, model_to_do, useGPU2, constit_input, track_input, MSeg_i
 
 def setup_model_architecture(constit_input, track_input, MSeg_input, jet_input, X_train_constit, X_train_track,
                              X_train_MSeg, X_train_jet, reg_value, hidden_fraction, learning_rate, dropout_value):
-    # Set up inputs and outputs for Conv1D layers
-    constit_input_tensor, constit_output_tensor = constit_input.init_keras_cnn_input_output(X_train_constit[0].shape)
-    track_input_tensor, track_output_tensor = track_input.init_keras_cnn_input_output(X_train_track[0].shape)
-    MSeg_input_tensor, MSeg_ouput_tensor = MSeg_input.init_keras_cnn_input_output(X_train_MSeg[0].shape)
-
-    # Set up LSTM layers + Dense layer for monitoring
-    constit_output_tensor, constit_dense_tensor = constit_input.init_keras_lstm(reg_value, constit_output_tensor)
-    track_output_tensor, track_dense_tensor = track_input.init_keras_lstm(reg_value, track_output_tensor)
-    MSeg_ouput_tensor, MSeg_dense_tensor = MSeg_input.init_keras_lstm(reg_value, MSeg_ouput_tensor)
+    # Set up inputs and outputs for Keras layers
+    # This sets up the layers specified in the ModelInput object i.e. Conv1D, LSTM
+    # NOTE: some of these tensors might be 'None'
+    constit_input_tensor, constit_output_tensor, constit_dense_tensor = constit_input.init_keras_layers(X_train_constit[0].shape, reg_value)
+    track_input_tensor, track_output_tensor, track_dense_tensor = track_input.init_keras_layers(X_train_track[0].shape, reg_value)
+    MSeg_input_tensor, MSeg_ouput_tensor, MSeg_dense_tensor = MSeg_input.init_keras_layers(X_train_MSeg[0].shape, reg_value)
 
     # Set up layers for jet
     jet_input_tensor, jet_output_tensor = jet_input.init_keras_dense_input_output(X_train_jet.values[0].shape)
@@ -216,8 +217,8 @@ def setup_model_architecture(constit_input, track_input, MSeg_input, jet_input, 
 
     # Setup training layers
     layers_to_input = [constit_input_tensor, track_input_tensor, MSeg_input_tensor, jet_input_tensor]
-    layers_to_output = [main_output_tensor, constit_dense_tensor, track_dense_tensor, MSeg_dense_tensor,
-                        jet_output_tensor]
+    layers_to_output = list(filter(None, [main_output_tensor, constit_dense_tensor, track_dense_tensor,
+                                          MSeg_dense_tensor, jet_output_tensor]))  # remove tensors set to None
     weights_for_loss = [1., 0.01, 0.4, 0.1, 0.01]  # TODO: ??
 
     # Setup Model

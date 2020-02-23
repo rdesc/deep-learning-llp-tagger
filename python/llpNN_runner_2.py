@@ -8,7 +8,6 @@ from model_input.model_input import ModelInput
 parser = argparse.ArgumentParser(fromfile_prefix_chars='@')
 parser.add_argument('--file_name')
 parser.add_argument('--finalPlots_model')
-parser.add_argument('--model_to_do')
 parser.add_argument('--doTraining', action="store_true")
 parser.add_argument('--useGPU2', action="store_true")
 parser.add_argument('--makeFinalPlots', action="store_true")
@@ -17,6 +16,7 @@ args = parser.parse_args(['--finalPlots_model', 'foo', '@args.txt'])
 
 # dataset names
 name_list = ["processed_output_Lxy1500_Lz3000_slim0.1.pkl"]
+model_to_do = "conv1d_"
 
 # model hyper-parameters (can do consecutive training with diff architectures)
 # number of nodes in LSTM for each input
@@ -47,7 +47,7 @@ if args.doTraining:
         jet_input = JetInput(name='jet', num_features=3)
 
         # Train model
-        train_llp(file_name, args.model_to_do, args.useGPU2, constit_input, track_input, MSeg_input, jet_input, frac=1.0)
+        train_llp(file_name, model_to_do, args.useGPU2, constit_input, track_input, MSeg_input, jet_input, frac=1.0)
         # Free up some memory
         gc.collect()
 

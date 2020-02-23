@@ -9,6 +9,7 @@ from evaluate_training import find_threshold, signal_llp_efficiencies, bkg_false
 
 
 def create_directories(model_to_do, filename):
+    """Creates directories to store model plots + Keras files and returns directory name."""
     # Append time/date to directory name
     creation_time = str(datetime.now().strftime('%Y-%m-%d_%H:%M:%S/'))
     dir_name = model_to_do + filename + "_" + creation_time
@@ -24,6 +25,7 @@ def create_directories(model_to_do, filename):
 
 
 def load_dataset(filename):
+    """Loads .pkl file, does some pre-processing and returns Pandas DataFrame"""
     # Load dataset
     df = pd.read_pickle(filename)
     # Replace infs with nans
