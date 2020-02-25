@@ -22,8 +22,7 @@ os.environ['exception_verbosity'] = 'high'
 # TODO: add docs
 
 
-def train_llp(filename, model_to_do, useGPU2, constit_input, track_input, MSeg_input, jet_input, plt_model=False,
-              frac=1.0,
+def train_llp(filename, model_to_do, useGPU2, constit_input, track_input, MSeg_input, jet_input, plt_model=False, frac=1.0,
               batch_size=5000, reg_value=0.001, dropout_value=0.1, epochs=50, learning_rate=0.002, hidden_fraction=1):
     # Setup directories
     print("\nSetting up directories...\n")
@@ -39,8 +38,7 @@ def train_llp(filename, model_to_do, useGPU2, constit_input, track_input, MSeg_i
     f.write(str(vars(jet_input)) + "\n")
     f.write("\nOther hyperparameters\n")
     f.write("frac = %s\nbatch_size = %s\nreg_value = %s\ndropout_value = %s\nepochs = %s\nlearning_rate = %s\n"
-            "hidden_fraction = %s\n" % (
-            frac, batch_size, reg_value, dropout_value, epochs, learning_rate, hidden_fraction))
+            "hidden_fraction = %s\n" % (frac, batch_size, reg_value, dropout_value, epochs, learning_rate, hidden_fraction))
     f.close()
 
     # Do Keras_setup
@@ -218,7 +216,7 @@ def setup_model_architecture(constit_input, track_input, MSeg_input, jet_input, 
     # Setup training layers
     layers_to_input = [constit_input_tensor, track_input_tensor, MSeg_input_tensor, jet_input_tensor]
     layers_to_output = [main_output_tensor, constit_dense_tensor, track_dense_tensor,
-                                          MSeg_dense_tensor, jet_output_tensor]  # remove tensors set to None
+                                          MSeg_dense_tensor, jet_output_tensor]  # TODO: remove tensors set to None
     weights_for_loss = [1., 0.01, 0.4, 0.1, 0.01]  # TODO: ??
 
     # Setup Model
