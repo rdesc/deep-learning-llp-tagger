@@ -8,8 +8,8 @@ class ModelInput:
 
         Attributes:
             name (str): name of input
-            rows_max (int): number of inputs (rows in input data variable X)
-            num_features (int): number of features or variables (columns in input data variable X)
+            rows_max (int): number of inputs (number of rows in input data variable X)
+            num_features (int): number of features or variables (number of columns in input data variable X)
             filters_cnn (list): list of number of filters for each Conv1D layer
             nodes_lstm (int): number of nodes for lstm layer
     """
@@ -21,21 +21,21 @@ class ModelInput:
         self.filters_cnn = filters_cnn
         self.nodes_lstm = nodes_lstm
 
-    def extract_and_split_data(self, X_train, X_test, X_val, start, end):
+    def extract_and_split_data(self, X_train, X_val, X_test, start, end):
         train = X_train.loc[:, start:end + str(self.rows_max - 1)]
         train = train.values.reshape(train.shape[0], self.rows_max, self.num_features)
-        test = X_test.loc[:, start:end + str(self.rows_max - 1)]
-        test = test.values.reshape(test.shape[0], self.rows_max, self.num_features)
         val = X_val.loc[:, start:end + str(self.rows_max - 1)]
         val = val.values.reshape(val.shape[0], self.rows_max, self.num_features)
+        test = X_test.loc[:, start:end + str(self.rows_max - 1)]
+        test = test.values.reshape(test.shape[0], self.rows_max, self.num_features)
 
         # print some details
         print("Shape: %.0f x %.0f" % (train.shape[1], train.shape[2]))
         print("Number of training examples %.0f" % (train.shape[0]))
-        print("Number of testing examples %.0f" % (test.shape[0]))
         print("Number of validating examples %.0f" % (val.shape[0]))
+        print("Number of testing examples %.0f" % (test.shape[0]))
 
-        return train, test, val
+        return train, val, test
 
     def init_keras_layers(self, shape, reg_value, activation_cnn='relu', activation_lstm='softmax'):
         # input to first model layer
