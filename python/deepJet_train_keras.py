@@ -92,24 +92,23 @@ def train_llp(filename, model_to_do, useGPU2, constit_input, track_input, MSeg_i
     del Z
 
     # Convert labels to categorical (needed for multiclass training)
-    y_test = np_utils.to_categorical(y_test)
     y_train = np_utils.to_categorical(y_train)
+    y_val = np_utils.to_categorical(y_val)
 
     # Split X into track, MSeg, and constit inputs and reshape dataframes into shape expected by Keras
     # This is an ordered array, so each input is formatted as number of constituents x number of variables
     print("\nPreparing train, test, and validate data for model...\n")
     print("\nPreparing constit data...")
-    # FIXME X_val not used!
-    X_train_constit, X_test_constit, X_val_constit = constit_input.extract_and_split_data(X_train, X_test, X_val,
+    X_train_constit, X_val_constit, X_test_constit = constit_input.extract_and_split_data(X_train, X_val, X_test,
                                                                                           'clus_pt_0', 'clus_time_')
     print("\nPreparing track data...")
-    X_train_track, X_test_track, X_val_track = track_input.extract_and_split_data(X_train, X_test, X_val,
+    X_train_track, X_val_track, X_test_track = track_input.extract_and_split_data(X_train, X_val, X_test,
                                                                                   'nn_track_pt_0', 'nn_track_SCTHits_')
     print("\nPreparing MSeg data...")
-    X_train_MSeg, X_test_MSeg, X_val_MSeg = MSeg_input.extract_and_split_data(X_train, X_test, X_val,
+    X_train_MSeg, X_val_MSeg, X_test_MSeg = MSeg_input.extract_and_split_data(X_train, X_val, X_test,
                                                                               'nn_MSeg_etaPos_0', 'nn_MSeg_t0_')
     print("\nPreparing jet data...")
-    X_train_jet, X_test_jet, X_val_jet = jet_input.extract_and_split_data(X_train, X_test, X_val, 'jet_pt', 'jet_phi')
+    X_train_jet, X_val_jet, X_test_jet = jet_input.extract_and_split_data(X_train, X_val, X_test, 'jet_pt', 'jet_phi')
 
     # Done preparing inputs for model!!
     print("\nDone preparing data for model!!!\n")
@@ -128,12 +127,11 @@ def train_llp(filename, model_to_do, useGPU2, constit_input, track_input, MSeg_i
     if plt_model:
         plot_model(model, show_shapes=True, to_file='plots/' + dir_name + '/model.png')
 
-    # TODO: fix order x_train -> x_val -> x_test
     # Setup validation inputs, outputs, and weights
-    x_to_validate = [X_test_constit, X_test_track, X_test_MSeg, X_test_jet.values]
-    y_to_validate = [y_test, y_test, y_test, y_test, y_test]
-    weights_to_validate = [weights_test.values, weights_test.values, weights_test.values, weights_test.values,
-                           weights_test.values]
+    x_to_validate = [X_val_constit, X_val_track, X_val_MSeg, X_val_jet.values]
+    y_to_validate = [y_val, y_val, y_val, y_val, y_val]
+    weights_to_validate = [weights_val.values, weights_val.values, weights_val.values, weights_val.values,
+                           weights_val.values]
 
     # Setup training inputs, outputs, and weights
     x_to_train = [X_train_constit, X_train_track, X_train_MSeg, X_train_jet.values]
@@ -193,7 +191,7 @@ def train_llp(filename, model_to_do, useGPU2, constit_input, track_input, MSeg_i
     # TODO: improve doc on Z and mcWeights, and improve naming _val vs. _test
     # TODO: fix naming of X_val, X_test (fix confusion)
     # TODO: can now test if loading architecture with Keras api works
-    evaluate_model(model, dir_name, [X_val_constit, X_val_track, X_val_MSeg, X_val_jet.values], y_val, Z_val, mcWeights_val)
+    evaluate_model(model, dir_name, [X_test_constit, X_test_track, X_test_MSeg, X_test.values], y_test, Z_test, mcWeights_test)
 
 
 def setup_model_architecture(constit_input, track_input, MSeg_input, jet_input, X_train_constit, X_train_track,
