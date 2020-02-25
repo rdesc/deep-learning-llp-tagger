@@ -191,7 +191,7 @@ def train_llp(filename, model_to_do, useGPU2, constit_input, track_input, MSeg_i
     # TODO: improve doc on Z and mcWeights, and improve naming _val vs. _test
     # TODO: fix naming of X_val, X_test (fix confusion)
     # TODO: can now test if loading architecture with Keras api works
-    evaluate_model(model, dir_name, [X_test_constit, X_test_track, X_test_MSeg, X_test.values], y_test, Z_test, mcWeights_test)
+    evaluate_model(model, dir_name, [X_test_constit, X_test_track, X_test_MSeg, X_test_jet.values], y_test, Z_test, mcWeights_test)
 
 
 def setup_model_architecture(constit_input, track_input, MSeg_input, jet_input, X_train_constit, X_train_track,
