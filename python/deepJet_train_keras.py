@@ -22,15 +22,37 @@ os.environ['exception_verbosity'] = 'high'
 # TODO: add docs
 
 
-def train_llp(filename, model_to_do, useGPU2, constit_input, track_input, MSeg_input, jet_input, plt_model=False, frac=1.0,
+def train_llp(file_name, model_to_do, useGPU2, constit_input, track_input, MSeg_input, jet_input, plt_model=False, frac=1.0,
               batch_size=5000, reg_value=0.001, dropout_value=0.1, epochs=50, learning_rate=0.002, hidden_fraction=1):
+    """
+    Takes in arguments to change architecture of network, does training, then runs evaluate_training
+    :param file_name: Name of the .pkl file containing all the data
+    :param model_to_do: Name of the model
+    :param useGPU2: True to use GPU2
+    :param constit_input: ModelInput object for constituents
+    :param track_input: ModelInput object for tracks
+    :param MSeg_input: ModelInput object for muon segments
+    :param jet_input: ModelInput object for jets
+    :param plt_model: True to save model architecture to disk
+    :param frac: Fraction of events to use in file_name
+    :param batch_size: Number of training examples in one forward/backward pass
+    :param reg_value: Value of regularizer term for LSTM
+    :param dropout_value: Fraction of the input units to drop
+    :param epochs: Number of epochs to train the model
+    :param learning_rate: Learning rate
+    :param hidden_fraction: Fraction by which to multiple the dense layers
+    """
     # Setup directories
     print("\nSetting up directories...\n")
-    dir_name = create_directories(model_to_do, os.path.split(os.path.splitext(filename)[0])[1])
+    dir_name = create_directories(model_to_do, os.path.split(os.path.splitext(file_name)[0])[1])
 
     # Write a file with some details of architecture, will append final stats at end of training
     print("\nWriting to file training details...\n")
     f = open("plots/" + dir_name + "/training_details.txt", "w+")
+    f.write("File name\n")
+    f.write(file_name + "\n")
+    f.write("Model name\n")
+    f.write(model_to_do + "\n")
     f.write("ModelInput objects\n")
     f.write(str(vars(constit_input)) + "\n")
     f.write(str(vars(track_input)) + "\n")
@@ -50,8 +72,8 @@ def train_llp(filename, model_to_do, useGPU2, constit_input, track_input, MSeg_i
         os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
     # Load dataset
-    print("\nLoading up dataset " + filename + "...\n")
-    df = load_dataset(filename)
+    print("\nLoading up dataset " + file_name + "...\n")
+    df = load_dataset(file_name)
 
     # Extract labels
     Y = df['label']
@@ -127,17 +149,20 @@ def train_llp(filename, model_to_do, useGPU2, constit_input, track_input, MSeg_i
     if plt_model:
         plot_model(model, show_shapes=True, to_file='plots/' + dir_name + '/model.png')
 
+    # Setup training inputs, outputs, and weights
+    x_to_train = [X_train_constit, X_train_track, X_train_MSeg, X_train_jet.values]
+    y_to_train = [y_train, y_train, y_train, y_train, y_train]
+    weights_to_train = [weights_train.values, weights_train.values, weights_train.values, weights_train.values,
+                        weights_train.values]
+
     # Setup validation inputs, outputs, and weights
     x_to_validate = [X_val_constit, X_val_track, X_val_MSeg, X_val_jet.values]
     y_to_validate = [y_val, y_val, y_val, y_val, y_val]
     weights_to_validate = [weights_val.values, weights_val.values, weights_val.values, weights_val.values,
                            weights_val.values]
 
-    # Setup training inputs, outputs, and weights
-    x_to_train = [X_train_constit, X_train_track, X_train_MSeg, X_train_jet.values]
-    y_to_train = [y_train, y_train, y_train, y_train, y_train]
-    weights_to_train = [weights_train.values, weights_train.values, weights_train.values, weights_train.values,
-                        weights_train.values]
+    # Setup testing input
+    x_to_test = [X_test_constit, X_test_track, X_test_MSeg, X_test_jet.values]
 
     # Do training
     print("\nStarting training...\n")
@@ -187,14 +212,14 @@ def train_llp(filename, model_to_do, useGPU2, constit_input, track_input, MSeg_i
     # Evaluate Model with ROC curves
     print("\nEvaluating model...\n")
     # TODO: improve doc on Z and mcWeights
-    evaluate_model(model, dir_name, [X_test_constit, X_test_track, X_test_MSeg, X_test_jet.values], y_test, Z_test, mcWeights_test)
+    evaluate_model(model, dir_name, x_to_test, y_test, Z_test, mcWeights_test)
 
 
 def setup_model_architecture(constit_input, track_input, MSeg_input, jet_input, X_train_constit, X_train_track,
                              X_train_MSeg, X_train_jet, reg_value, hidden_fraction, learning_rate, dropout_value):
+    """Method that builds the model architecture and returns the model object"""
     # Set up inputs and outputs for Keras layers
     # This sets up the layers specified in the ModelInput object i.e. Conv1D, LSTM
-    # NOTE: some of these tensors might be 'None'
     constit_input_tensor, constit_output_tensor, constit_dense_tensor = constit_input.init_keras_layers(X_train_constit[0].shape, reg_value)
     track_input_tensor, track_output_tensor, track_dense_tensor = track_input.init_keras_layers(X_train_track[0].shape, reg_value)
     MSeg_input_tensor, MSeg_ouput_tensor, MSeg_dense_tensor = MSeg_input.init_keras_layers(X_train_MSeg[0].shape, reg_value)
@@ -214,7 +239,7 @@ def setup_model_architecture(constit_input, track_input, MSeg_input, jet_input, 
     # Setup training layers
     layers_to_input = [constit_input_tensor, track_input_tensor, MSeg_input_tensor, jet_input_tensor]
     layers_to_output = [main_output_tensor, constit_dense_tensor, track_dense_tensor,
-                        MSeg_dense_tensor, jet_output_tensor]  # TODO: remove tensors set to None
+                        MSeg_dense_tensor, jet_output_tensor]
     weights_for_loss = [1., 0.01, 0.4, 0.1, 0.01]  # TODO: ??
 
     # Setup Model
@@ -231,6 +256,7 @@ def setup_model_architecture(constit_input, track_input, MSeg_input, jet_input, 
 
 
 def keras_setup():
+    """Sets up Keras"""
     session_conf = tf.ConfigProto(intra_op_parallelism_threads=64, inter_op_parallelism_threads=64)
     tf.set_random_seed(1)
     sess = tf.Session(graph=tf.get_default_graph(), config=session_conf)

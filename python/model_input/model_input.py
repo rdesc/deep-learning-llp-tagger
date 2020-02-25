@@ -62,12 +62,14 @@ class ModelInput:
         if self.nodes_lstm:
             output_tensor = CuDNNLSTM(self.nodes_lstm, kernel_regularizer=L1L2(l1=reg_value, l2=reg_value)) \
                 (output_tensor if output_tensor is not None else input_tensor)
-            # Dense layer tracks performances of LSTM
-            dense_tensor = Dense(3, activation=activation_lstm, name=self.name + '_output')(output_tensor)
 
         if not (self.nodes_lstm or self.filters_cnn):
             print("\nNo Conv1D or LSTM layers in model architecture!\n")
             # set output tensor equal to input tensor
             output_tensor = input_tensor
+
+        else:
+            # Dense layer to track performance of layer
+            dense_tensor = Dense(3, activation=activation_lstm, name=self.name + '_output')(output_tensor)
 
         return input_tensor, output_tensor, dense_tensor
