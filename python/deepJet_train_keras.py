@@ -186,14 +186,14 @@ def train_llp(filename, model_to_do, useGPU2, constit_input, track_input, MSeg_i
                                      X_train_MSeg, X_train_jet, reg_value, hidden_fraction, learning_rate,
                                      dropout_value)
     # load weights
-    model.load_weights('keras_outputs/' + dir_name + '/model_weights.h5')
+    model.load_weights('keras_outputs/' + dir_name + '/checkpoint')
 
     # Evaluate Model with ROC curves
     print("\nEvaluating model...\n")
     # TODO: improve doc on Z and mcWeights, and improve naming _val vs. _test
     # TODO: fix naming of X_val, X_test (fix confusion)
     # TODO: can now test if loading architecture with Keras api works
-    evaluate_model(model, dir_name, x_to_validate, y_val, Z_val, mcWeights_val)
+    evaluate_model(model, dir_name, [X_val_constit, X_val_track, X_val_MSeg, X_val_jet.values], y_val, Z_val, mcWeights_val)
 
 
 def setup_model_architecture(constit_input, track_input, MSeg_input, jet_input, X_train_constit, X_train_track,

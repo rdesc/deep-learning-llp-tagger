@@ -41,14 +41,13 @@ if args.doTraining:
 
         # TODO: add loop to iterate over each model architecture
         # Initialize input objects
-        constit_input = ModelInput(name='constit', rows_max=30, num_features=12, filters_cnn=[64, 32, 32, 8], nodes_lstm=150)
-        track_input = ModelInput(name='track', rows_max=20, num_features=13, filters_cnn=[64, 32, 32, 8], nodes_lstm=150)
-        MSeg_input = ModelInput(name='MSeg', rows_max=30, num_features=6, filters_cnn=[32, 16, 4], nodes_lstm=150)
+        constit_input = ModelInput(name='constit', rows_max=30, num_features=12, nodes_lstm=150)
+        track_input = ModelInput(name='track', rows_max=20, num_features=13, nodes_lstm=150)
+        MSeg_input = ModelInput(name='MSeg', rows_max=30, num_features=6, nodes_lstm=150)
         jet_input = JetInput(name='jet', num_features=3)
 
         # Train model
-        train_llp(file_name, model_to_do, args.useGPU2, constit_input, track_input, MSeg_input, jet_input, frac=1.0,
-                  learning_rate=0.00005, hidden_fraction=2, epochs=50, dropout_value=0.2, reg_value=0.005)
+        train_llp(file_name, model_to_do, args.useGPU2, constit_input, track_input, MSeg_input, jet_input, frac=1.0, plt_model=True, learning_rate = 0.00005, hidden_fraction = 2, epochs = 50, dropout_value = 0.2, reg_value=0.005)
         # Free up some memory
         gc.collect()
 
