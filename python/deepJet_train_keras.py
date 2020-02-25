@@ -80,7 +80,7 @@ def train_llp(filename, model_to_do, useGPU2, constit_input, track_input, MSeg_i
     y_train = y_train.iloc[0:int(y_train.shape[0] * frac)]
     weights_train = weights_train.iloc[0:int(weights_train.shape[0] * frac)]
     mcWeights_train = mcWeights_train.iloc[0:int(mcWeights_train.shape[0] * frac)]  # TODO: never used??
-    Z_train = Z_train.iloc[0:int(Z_train.shape[0] * frac)]  # # TODO: never used??
+    Z_train = Z_train.iloc[0:int(Z_train.shape[0] * frac)]  # TODO: never used??
 
     # Divide testing set into epoch-by-epoch validation and final evaluation sets
     X_test, X_val, y_test, y_val, weights_test, weights_val, mcWeights_test, mcWeights_val, Z_test, Z_val = \
@@ -99,6 +99,7 @@ def train_llp(filename, model_to_do, useGPU2, constit_input, track_input, MSeg_i
     # This is an ordered array, so each input is formatted as number of constituents x number of variables
     print("\nPreparing train, test, and validate data for model...\n")
     print("\nPreparing constit data...")
+    # FIXME X_val not used!
     X_train_constit, X_test_constit, X_val_constit = constit_input.extract_and_split_data(X_train, X_test, X_val,
                                                                                           'clus_pt_0', 'clus_time_')
     print("\nPreparing track data...")
@@ -127,13 +128,14 @@ def train_llp(filename, model_to_do, useGPU2, constit_input, track_input, MSeg_i
     if plt_model:
         plot_model(model, show_shapes=True, to_file='plots/' + dir_name + '/model.png')
 
-    # Setup validation
+    # TODO: fix order x_train -> x_val -> x_test
+    # Setup validation inputs, outputs, and weights
     x_to_validate = [X_test_constit, X_test_track, X_test_MSeg, X_test_jet.values]
     y_to_validate = [y_test, y_test, y_test, y_test, y_test]
     weights_to_validate = [weights_test.values, weights_test.values, weights_test.values, weights_test.values,
                            weights_test.values]
 
-    # Setup training weights and data
+    # Setup training inputs, outputs, and weights
     x_to_train = [X_train_constit, X_train_track, X_train_MSeg, X_train_jet.values]
     y_to_train = [y_train, y_train, y_train, y_train, y_train]
     weights_to_train = [weights_train.values, weights_train.values, weights_train.values, weights_train.values,
@@ -189,6 +191,8 @@ def train_llp(filename, model_to_do, useGPU2, constit_input, track_input, MSeg_i
     # Evaluate Model with ROC curves
     print("\nEvaluating model...\n")
     # TODO: improve doc on Z and mcWeights, and improve naming _val vs. _test
+    # TODO: fix naming of X_val, X_test (fix confusion)
+    # TODO: can now test if loading architecture with Keras api works
     evaluate_model(model, dir_name, x_to_validate, y_val, Z_val, mcWeights_val)
 
 
@@ -216,7 +220,7 @@ def setup_model_architecture(constit_input, track_input, MSeg_input, jet_input, 
     # Setup training layers
     layers_to_input = [constit_input_tensor, track_input_tensor, MSeg_input_tensor, jet_input_tensor]
     layers_to_output = [main_output_tensor, constit_dense_tensor, track_dense_tensor,
-                                          MSeg_dense_tensor, jet_output_tensor]  # TODO: remove tensors set to None
+                        MSeg_dense_tensor, jet_output_tensor]  # TODO: remove tensors set to None
     weights_for_loss = [1., 0.01, 0.4, 0.1, 0.01]  # TODO: ??
 
     # Setup Model
