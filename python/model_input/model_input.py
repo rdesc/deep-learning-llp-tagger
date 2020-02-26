@@ -22,6 +22,10 @@ class ModelInput:
         self.nodes_lstm = nodes_lstm
 
     def extract_and_split_data(self, X_train, X_val, X_test, start, end):
+        """
+        Extracts and splits up the data into training, validation, and testing inputs
+        :return: training, validation, and testing variables
+        """
         train = X_train.loc[:, start:end + str(self.rows_max - 1)]
         train = train.values.reshape(train.shape[0], self.rows_max, self.num_features)
         val = X_val.loc[:, start:end + str(self.rows_max - 1)]
@@ -38,6 +42,10 @@ class ModelInput:
         return train, val, test
 
     def init_keras_layers(self, shape, reg_value, activation_cnn='relu', activation_lstm='softmax'):
+        """
+        Setup the Keras layers for individual ModelInput object
+        :return: input, output, and dense tensor variables
+        """
         # input to first model layer
         input_tensor = Input(shape=shape, dtype='float32', name=self.name + '_input')
         output_tensor = None

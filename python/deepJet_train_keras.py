@@ -19,9 +19,6 @@ os.environ['openmp'] = 'True'
 os.environ['exception_verbosity'] = 'high'
 
 
-# TODO: add docs
-
-
 def train_llp(file_name, model_to_do, useGPU2, constit_input, track_input, MSeg_input, jet_input, plt_model=False, frac=1.0,
               batch_size=5000, reg_value=0.001, dropout_value=0.1, epochs=50, learning_rate=0.002, hidden_fraction=1):
     """
@@ -51,9 +48,9 @@ def train_llp(file_name, model_to_do, useGPU2, constit_input, track_input, MSeg_
     f = open("plots/" + dir_name + "/training_details.txt", "w+")
     f.write("File name\n")
     f.write(file_name + "\n")
-    f.write("Model name\n")
+    f.write("\nModel name\n")
     f.write(model_to_do + "\n")
-    f.write("ModelInput objects\n")
+    f.write("\nModelInput objects\n")
     f.write(str(vars(constit_input)) + "\n")
     f.write(str(vars(track_input)) + "\n")
     f.write(str(vars(MSeg_input)) + "\n")
