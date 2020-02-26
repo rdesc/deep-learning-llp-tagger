@@ -16,43 +16,45 @@ args = parser.parse_args(['--finalPlots_model', 'foo', '@args.txt'])
 
 # dataset names
 name_list = ["processed_output_Lxy1500_Lz3000_slim0.1.pkl"]
-model_to_do = "conv1d_"
+# model names
+model_to_do_list = ["conv1D_lstm_", "lstm_"]
 
 # model hyper-parameters (can do consecutive training with diff architectures)
-# number of nodes in LSTM for each input
-constit_nodes_lstm = [60, 120, 240]
-track_nodes_lstm = [60, 120, 240]
-MSeg_nodes_lstm = [25, 50, 200]
-frac_list = [1.0, 0.2, 0.4, 0.6, 0.8]
-lr_values = [0.00005]
-
-# number of inputs
-num_constits_list = [30, 28, 26, 22, 16, 12, 8]
-num_tracks_list = [20, 15, 10, 5]
-
-# other parameters
-layers_list = [1, 2]
-node_list = [150, 300]
+filters_cnn_constit = [[64, 32, 32, 8], 0]
+filters_cnn_track = [[64, 32, 32, 8], 0]
+filters_cnn_MSeg = [[32, 16, 4], 0]
+nodes_lstm_constit = [150, 150]
+nodes_track_constit = [150, 150]
+nodes_MSeg_constit = [150, 150]
 
 if args.doTraining:
     # iterate over each dataset
     for file in name_list:
         file_name = args.file_name + file
 
-        # TODO: add loop to iterate over each model architecture
-        # Initialize input objects
-        constit_input = ModelInput(name='constit', rows_max=30, num_features=12, nodes_lstm=150)
-        track_input = ModelInput(name='track', rows_max=20, num_features=13, nodes_lstm=150)
-        MSeg_input = ModelInput(name='MSeg', rows_max=30, num_features=6, nodes_lstm=150)
-        jet_input = JetInput(name='jet', num_features=3)
+        for i in range(len(model_to_do_list)):
+            model_to_do = model_to_do_list[i]
+            print("\nModel: " + model_to_do)
 
-        # Train model
-        train_llp(file_name, model_to_do, args.useGPU2, constit_input, track_input, MSeg_input, jet_input, frac=1.0, plt_model=True, learning_rate = 0.00005, hidden_fraction = 2, epochs = 50, dropout_value = 0.2, reg_value=0.005)
-        # Free up some memory
-        gc.collect()
+            # Initialize input objects
+            constit_input = ModelInput(name='constit', rows_max=30, num_features=12, filters_cnn=filters_cnn_constit[i],
+                                       nodes_lstm=nodes_lstm_constit[i])
+            track_input = ModelInput(name='track', rows_max=20, num_features=13, filters_cnn=filters_cnn_track[i],
+                                     nodes_lstm=nodes_track_constit[i])
+            MSeg_input = ModelInput(name='MSeg', rows_max=30, num_features=6, filters_cnn=filters_cnn_MSeg[i],
+                                    nodes_lstm=nodes_MSeg_constit[i])
+            jet_input = JetInput(name='jet', num_features=3)
+
+            # Train model
+            train_llp(file_name, model_to_do, args.useGPU2, constit_input, track_input, MSeg_input, jet_input, frac=1.0,
+                      plt_model=True, learning_rate=0.00005, hidden_fraction=2, epochs=50, dropout_value=0.2,
+                      reg_value=0.005)
+            # Free up some memory
+            gc.collect()
 
 if args.makeFinalPlots:
     input_file = args.file_name + "/validation_dec24.pkl"
     plot_vars_final(input_file, model_to_do=args.finalPlots_model, num_constit_lstm=150, num_track_lstm=150,
                     num_mseg_lstm=150, learning_rate=0.00005, numConstitLayers=1, numTrackLayers=1, numMSegLayers=1,
                     hiddenFraction=2, epochs=200, dropout_value=0.2, reg_value=0.002),
+
