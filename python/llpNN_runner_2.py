@@ -15,17 +15,17 @@ args = parser.parse_args(['--file_name', 'foo', '@args.txt'])
 args = parser.parse_args(['--finalPlots_model', 'foo', '@args.txt'])
 
 # dataset names
-name_list = ["processed_output_Lxy1500_Lz3000_slim0.1.pkl"]
+name_list = ["processed_output_Lxy1500_Lz3000.pkl"]
 # model names
-model_to_do_list = ["conv1D_lstm_", "lstm_"]
+model_to_do_list = ["conv1D_lstm_", "lstm_", "conv1D_"]
 
 # model hyper-parameters (can do consecutive training with diff architectures)
-filters_cnn_constit = [[64, 32, 32, 8], 0]
-filters_cnn_track = [[64, 32, 32, 8], 0]
-filters_cnn_MSeg = [[32, 16, 4], 0]
-nodes_lstm_constit = [150, 150]
-nodes_track_constit = [150, 150]
-nodes_MSeg_constit = [150, 150]
+filters_cnn_constit = [[64, 32, 32, 8], 0, [64, 32, 32, 8]]
+filters_cnn_track = [[64, 32, 32, 8], 0, [64, 32, 32, 8]]
+filters_cnn_MSeg = [[32, 16, 4], 0, [32, 16, 4]]
+nodes_lstm_constit = [150, 150, 0]
+nodes_track_constit = [150, 150, 0]
+nodes_MSeg_constit = [150, 150, 0]
 
 if args.doTraining:
     # iterate over each dataset
