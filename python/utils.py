@@ -51,13 +51,15 @@ def load_dataset(filename):
     return df
 
 
-def evaluate_model(model, dir_name, X_test, y_test, Z_test, mcWeights_test):
+def evaluate_model(model, dir_name, X_test, y_test, weights_test, Z_test, mcWeights_test):
     # evaluate the model using Keras api
-    _, test_acc = model.evaluate(X_test, y_test, verbose=0)
+    acc_index = model.metrics_names.index('main_output_acc')
+    test_acc = model.evaluate(X_test, y_test, verbose=0, sample_weight=weights_test)[acc_index]
+    y_test = y_test[0]
 
     # TODO: refactor and understand
     # make predictions
-    prediction = model.predict(X_test, verbose=True)  # currently expects X to be a list of length 4 (model has 4 inputs)
+    prediction = model.predict(X_test, verbose=0)  # currently expects X to be a list of length 4 (model has 4 inputs)
     prediction = prediction[0]  # model currently has 5 outputs (1 main output, 4 outputs for monitoring LSTMs)
 
     # Sum of MC weights

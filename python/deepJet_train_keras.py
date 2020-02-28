@@ -104,10 +104,10 @@ def train_llp(file_name, model_to_do, useGPU2, constit_input, track_input, MSeg_
         print("\nDoing KFold iteration # %.0f...\n" % n_folds)
         n_folds += 1
         # select samples
-        X_train, y_train, weights_train, mcWeights_train, Z_train, = \
-            X[train_ix], Y[train_ix], weights[train_ix], mcWeights[train_ix], Z[train_ix]
+        X_train, y_train, weights_train, mcWeights_train, Z_train = \
+            X.iloc[train_ix], Y.iloc[train_ix], weights.iloc[train_ix], mcWeights.iloc[train_ix], Z.iloc[train_ix]
         X_test, y_test, weights_test, mcWeights_test, Z_test = \
-            X[test_ix], Y[test_ix], weights[test_ix], mcWeights[test_ix], Z[test_ix]
+            X.iloc[test_ix], Y.iloc[test_ix], weights.iloc[test_ix], mcWeights.iloc[test_ix], Z.iloc[test_ix]
 
         # Keep fraction of events specified by frac param
         X_train = X_train.iloc[0:int(X_train.shape[0] * frac)]
@@ -173,8 +173,11 @@ def train_llp(file_name, model_to_do, useGPU2, constit_input, track_input, MSeg_
         weights_to_validate = [weights_val.values, weights_val.values, weights_val.values, weights_val.values,
                                weights_val.values]
 
-        # Setup testing input
+        # Setup testing input, outputs, and weights
         x_to_test = [X_test_constit, X_test_track, X_test_MSeg, X_test_jet.values]
+        y_to_test = [y_test, y_test, y_test, y_test, y_test]
+        weights_to_test = [weights_test.values, weights_test.values, weights_test.values, weights_test.values,
+                           weights_test.values] 
 
         # Do training
         print("\nStarting training...\n")
@@ -227,7 +230,7 @@ def train_llp(file_name, model_to_do, useGPU2, constit_input, track_input, MSeg_
         # Evaluate Model with ROC curves
         print("\nEvaluating model...\n")
         # TODO: improve doc on Z and mcWeights
-        roc_auc, test_acc = evaluate_model(model, dir_name, x_to_test, y_test, Z_test, mcWeights_test)
+        roc_auc, test_acc = evaluate_model(model, dir_name, x_to_test, y_to_test, weights_to_test, Z_test, mcWeights_test)
         roc_scores.append(roc_auc)
         acc_scores.append(test_acc)
         print('ROC area under curve: %.3f' % roc_auc)
