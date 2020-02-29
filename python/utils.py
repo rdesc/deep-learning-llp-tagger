@@ -3,9 +3,10 @@ import numpy as np
 import os
 from datetime import datetime
 import matplotlib.pyplot as plt
-from evaluate_training import find_threshold, signal_llp_efficiencies, bkg_falsePositives,\
+from evaluate_training import find_threshold, signal_llp_efficiencies, bkg_falsePositives, \
     make_multi_roc_curve, plot_prediction_histograms
 from keras.utils import np_utils
+
 
 def create_directories(model_to_do, filename):
     """Creates directories to store model plots + Keras files and returns directory name."""
@@ -52,10 +53,15 @@ def load_dataset(filename):
 
 
 def evaluate_model(model, dir_name, X_test, y_test, weights_test, Z_test, mcWeights_test):
+    # TODO: add doc for method + params
+
     # evaluate the model using Keras api
     acc_index = model.metrics_names.index('main_output_acc')
+    # model.evaluate expects target data to be the same shape/format as model.fit
     y_eval = np_utils.to_categorical(y_test)
-    test_acc = model.evaluate(X_test, [y_eval, y_eval, y_eval, y_eval, y_eval], verbose=1, sample_weight=weights_test)[acc_index]
+    y_eval = [y_eval, y_eval, y_eval, y_eval, y_eval]
+    # get accuracy of model on test set
+    test_acc = model.evaluate(X_test, y_eval, verbose=1, sample_weight=weights_test)[acc_index]
 
     # TODO: refactor and understand
     # make predictions
@@ -75,7 +81,8 @@ def evaluate_model(model, dir_name, X_test, y_test, weights_test, Z_test, mcWeig
     mcWeights_test[y_test == 2] *= bib_weight_length / bib_weight  # TODO: this does nothing??
     mcWeights_test[y_test == 1] *= sig_weight_length / sig_weight
     destination = "plots/" + dir_name + "/"
-    plot_prediction_histograms(destination, prediction, y_test, mcWeights_test, dir_name)
+    # TODO: to add other plots when nfold?
+    #plot_prediction_histograms(destination, prediction, y_test, mcWeights_test, dir_name)
 
     # This will be the BIB efficiency to aim for when making ROC curve
     threshold = 1 - 0.0316
@@ -90,36 +97,36 @@ def evaluate_model(model, dir_name, X_test, y_test, weights_test, Z_test, mcWeig
     # Make ROC curve of leftovers, those not tagged by above function
     bkg_eff, tag_eff, roc_auc = make_multi_roc_curve(prediction, y_test, mcWeights_test, test_threshold, third_label,
                                                      leftovers)
-    # Write AUC to training_details.txt
-    f.write("%s, %s\n" % (str(-threshold + 1), str(roc_auc)))
-    print("AUC: " + str(roc_auc))
-    # Make ROC curve
-    plt.plot(tag_eff, bkg_eff, label=f"BIB Eff: {threshold :.3f}" + f", AUC: {roc_auc:.3f}")
-    plt.xlabel("LLP Tagging Efficiency")
-    axes = plt.gca()
-    axes.set_xlim([0, 1])
-
-    # Finish and plot ROC curve family
-    plt.legend()
-    plt.yscale('log', nonposy='clip')
-    signal_test = prediction[y_test == 1]
-    qcd_test = prediction[y_test == 0]
-
-    print(signal_test[0:100].shape)
-    print("Length of Signal: " + str(len(signal_test)) + ", length of signal with weight 1: " + str(
-        len(signal_test[signal_test[:, 1] < 0.1])))
-    print("Length of QCD: " + str(len(qcd_test)) + ", length of qcd with weight 1: " + str(
-        len(qcd_test[qcd_test[:, 1] < 0.1])))
-    if third_label == 2:
-        plt.ylabel("QCD Rejection")
-        plt.savefig(destination + "roc_curve_atlas_rej_bib" + ".pdf", format='pdf', transparent=True)
-    if third_label == 0:
-        plt.ylabel("BIB Rejection")
-        plt.savefig(destination + "roc_curve_atlas_rej_qcd" + ".pdf", format='pdf', transparent=True)
-    plt.clf()
-    # Make plots of signal efficiency vs mH, mS
-    #signal_llp_efficiencies(prediction, y_test, Z_test, destination, f)
-    #bkg_falsePositives(prediction, y_test, Z_test, destination, f)
-    f.close()
+    # # Write AUC to training_details.txt
+    # f.write("%s, %s\n" % (str(-threshold + 1), str(roc_auc)))
+    # print("AUC: " + str(roc_auc))
+    # # Make ROC curve
+    # plt.plot(tag_eff, bkg_eff, label=f"BIB Eff: {threshold :.3f}" + f", AUC: {roc_auc:.3f}")
+    # plt.xlabel("LLP Tagging Efficiency")
+    # axes = plt.gca()
+    # axes.set_xlim([0, 1])
+    #
+    # # Finish and plot ROC curve family
+    # plt.legend()
+    # plt.yscale('log', nonposy='clip')
+    # signal_test = prediction[y_test == 1]
+    # qcd_test = prediction[y_test == 0]
+    #
+    # print(signal_test[0:100].shape)
+    # print("Length of Signal: " + str(len(signal_test)) + ", length of signal with weight 1: " + str(
+    #     len(signal_test[signal_test[:, 1] < 0.1])))
+    # print("Length of QCD: " + str(len(qcd_test)) + ", length of qcd with weight 1: " + str(
+    #     len(qcd_test[qcd_test[:, 1] < 0.1])))
+    # if third_label == 2:
+    #     plt.ylabel("QCD Rejection")
+    #     plt.savefig(destination + "roc_curve_atlas_rej_bib" + ".pdf", format='pdf', transparent=True)
+    # if third_label == 0:
+    #     plt.ylabel("BIB Rejection")
+    #     plt.savefig(destination + "roc_curve_atlas_rej_qcd" + ".pdf", format='pdf', transparent=True)
+    # plt.clf()
+    # # Make plots of signal efficiency vs mH, mS
+    # signal_llp_efficiencies(prediction, y_test, Z_test, destination, f)
+    # bkg_falsePositives(prediction, y_test, Z_test, destination, f)
+    # f.close()
 
     return roc_auc, test_acc

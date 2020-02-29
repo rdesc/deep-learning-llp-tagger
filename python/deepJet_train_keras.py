@@ -40,8 +40,6 @@ def train_llp(file_name, model_to_do, useGPU2, constit_input, track_input, MSeg_
     :param hidden_fraction: Fraction by which to multiple the dense layers
     :param kfold: KFold object to do KFold cross validation
     """
-    # make a single directory for kfold maybe?
-    # TODO: add logic to maybe not add directories/other plots when doing kfold cv
     # Setup directories
     print("\nSetting up directories...\n")
     dir_name = create_directories(model_to_do, os.path.split(os.path.splitext(file_name)[0])[1])
@@ -93,22 +91,34 @@ def train_llp(file_name, model_to_do, useGPU2, constit_input, track_input, MSeg_
     # Save memory
     del df
 
-    # TODO: handle case of no kfold
-    # Split data into train/test datasets
-    #X_train, X_test, y_train, y_test, weights_train, weights_test, mcWeights_train, mcWeights_test, Z_train, Z_test = \
-    #    train_test_split(X, Y, weights, mcWeights, Z, test_size=0.2)
-
-    # do kfold cross validation
-    n_folds = 1
+    # Handle case if no KFold
+    if kfold is None:
+        kfold = KFold(1)
+        n_folds = ""  # dummy value
+    else:
+        # initialize counter for current fold iteration
+        n_folds = 1
+    # initialize lists to store metrics
     roc_scores, acc_scores = list(), list()
     for train_ix, test_ix in kfold.split(X):
-        print("\nDoing KFold iteration # %.0f...\n" % n_folds)
-        n_folds += 1
-        # select samples
-        X_train, y_train, weights_train, mcWeights_train, Z_train = \
-            X.iloc[train_ix], Y.iloc[train_ix], weights.iloc[train_ix], mcWeights.iloc[train_ix], Z.iloc[train_ix]
-        X_test, y_test, weights_test, mcWeights_test, Z_test = \
-            X.iloc[test_ix], Y.iloc[test_ix], weights.iloc[test_ix], mcWeights.iloc[test_ix], Z.iloc[test_ix]
+        if kfold.get_n_splits() == 1:
+            # Split data into train/test datasets
+            X_train, X_test, y_train, y_test, weights_train, weights_test, mcWeights_train, mcWeights_test, Z_train, Z_test = \
+                train_test_split(X, Y, weights, mcWeights, Z, test_size=0.2)
+
+            # Delete variables to save memory
+            del X
+            del Y
+            del Z
+
+        else:
+            print("\nDoing KFold iteration # %.0f...\n" % n_folds)
+            n_folds += 1
+            # select samples
+            X_train, y_train, weights_train, mcWeights_train, Z_train = \
+                X.iloc[train_ix], Y.iloc[train_ix], weights.iloc[train_ix], mcWeights.iloc[train_ix], Z.iloc[train_ix]
+            X_test, y_test, weights_test, mcWeights_test, Z_test = \
+                X.iloc[test_ix], Y.iloc[test_ix], weights.iloc[test_ix], mcWeights.iloc[test_ix], Z.iloc[test_ix]
 
         # Keep fraction of events specified by frac param
         X_train = X_train.iloc[0:int(X_train.shape[0] * frac)]
@@ -120,11 +130,6 @@ def train_llp(file_name, model_to_do, useGPU2, constit_input, track_input, MSeg_
         # Divide testing set into epoch-by-epoch validation and final evaluation sets
         X_test, X_val, y_test, y_val, weights_test, weights_val, mcWeights_test, mcWeights_val, Z_test, Z_val = \
             train_test_split(X_test, y_test, weights_test, mcWeights_test, Z_test, test_size=0.5)  # TODO: random seed?
-
-        # Delete variables we don't need anymore (need to save memory...)
-#        del X
-#        del Y
-#        del Z
 
         # Convert labels to categorical (needed for multiclass training)
         y_train = np_utils.to_categorical(y_train)
@@ -203,7 +208,7 @@ def train_llp(file_name, model_to_do, useGPU2, constit_input, track_input, MSeg_
         plt.ylabel('Accuracy')
         plt.xlabel('Epoch')
         plt.legend(['Train', 'Test'], loc='upper left')
-        plt.savefig("plots/" + dir_name + "/accuracy_monitoring.pdf", format="pdf", transparent=True)
+        plt.savefig("plots/" + dir_name + "/accuracy_monitoring" + str(n_folds) + ".pdf", format="pdf", transparent=True)
         # Clear axes, figure, and figure window
         plt.clf()
         plt.cla()
@@ -216,7 +221,7 @@ def train_llp(file_name, model_to_do, useGPU2, constit_input, track_input, MSeg_
         plt.ylabel('Loss')
         plt.xlabel('Epoch')
         plt.legend(['Train', 'Test'], loc='upper left')
-        plt.savefig("plots/" + dir_name + "/loss_monitoring.pdf", format="pdf", transparent=True)
+        plt.savefig("plots/" + dir_name + "/loss_monitoring" + str(n_folds) + ".pdf", format="pdf", transparent=True)
 
         # close all open figures
         plt.close('all')

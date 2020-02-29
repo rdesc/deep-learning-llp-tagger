@@ -40,13 +40,14 @@ layers_list = [1, 2]
 node_list = [150, 300]
 hidden_layer_fractions = [2, 3, 4]
 
+# KFold variables
 kfold = None
 roc_results = []
 acc_results = []
 if args.doKFold:
     # Setup KFold Cross Validation
     seed = np.random.randint(100)
-    n_folds = 5
+    n_folds = 5  # should be greater than 1 (usually around 5 - 10 folds)
     kfold = KFold(n_folds, True, seed)
 
 if args.doTraining:
@@ -75,19 +76,16 @@ if args.doTraining:
                                                reg_value=0.005, kfold=kfold)
 
             # Summarize performance metrics
-            print('Estimated AUC %.3f (%.3f)' % (np.mean(roc_scores), np.std(roc_scores)))
+            print('\nEstimated AUC %.3f (%.3f)' % (np.mean(roc_scores), np.std(roc_scores)))
             print('Estimated accuracy %.3f (%.3f)' % (np.mean(acc_scores), np.std(acc_scores)))
             roc_results.append(roc_scores)
             acc_results.append(acc_scores)
 
-            # TODO: save results in a .txt file somewhere
             # Free up some memory
             gc.collect()
 
-    # Make boxplots of kFold CV
+    # Make boxplots of kFold CV results
     if roc_results and acc_results:
-        # save results to file first
-        
         print("\nPlotting KFold Cross Validation results...\n")
         creation_time = str(datetime.now().strftime('%m-%d_%H:%M'))
 
@@ -107,10 +105,13 @@ if args.doTraining:
         ax.set_xticklabels(model_to_do_list)
         fig.savefig("plots/kfold_cv_acc_" + creation_time + ".pdf", format="pdf", transparent=True)
 
+        # save results to file
         f = open("plots/kfold_data_" + creation_time + ".txt", "w+")
-        f.write("ROC\n")
+        f.write("Model list\n")
+        f.write(str(model_to_do_list))
+        f.write("\nROC AUC data\n")
         f.write(str(roc_results))
-        f.write("\nACC\n")
+        f.write("\nAccuracy data\n")
         f.write(str(acc_results))
         f.close()
 
