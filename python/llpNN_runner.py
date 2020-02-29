@@ -47,7 +47,7 @@ acc_results = []
 if args.doKFold:
     # Setup KFold Cross Validation
     seed = np.random.randint(100)
-    n_folds = 5  # should be greater than 1 (usually around 5 - 10 folds)
+    n_folds = 5  # should be greater than 2 (usually around 5 - 10 folds)
     kfold = KFold(n_folds, True, seed)
 
 if args.doTraining:

@@ -93,7 +93,7 @@ def train_llp(file_name, model_to_do, useGPU2, constit_input, track_input, MSeg_
 
     # Handle case if no KFold
     if kfold is None:
-        kfold = KFold(1)
+        kfold = KFold(1)  # FIXME this does not work
         n_folds = ""  # dummy value
     else:
         # initialize counter for current fold iteration
