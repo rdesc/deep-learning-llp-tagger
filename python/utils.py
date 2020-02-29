@@ -5,7 +5,7 @@ from datetime import datetime
 import matplotlib.pyplot as plt
 from evaluate_training import find_threshold, signal_llp_efficiencies, bkg_falsePositives,\
     make_multi_roc_curve, plot_prediction_histograms
-
+from keras.utils import np_utils
 
 def create_directories(model_to_do, filename):
     """Creates directories to store model plots + Keras files and returns directory name."""
@@ -54,8 +54,8 @@ def load_dataset(filename):
 def evaluate_model(model, dir_name, X_test, y_test, weights_test, Z_test, mcWeights_test):
     # evaluate the model using Keras api
     acc_index = model.metrics_names.index('main_output_acc')
-    test_acc = model.evaluate(X_test, y_test, verbose=0, sample_weight=weights_test)[acc_index]
-    y_test = y_test[0]
+    y_eval = np_utils.to_categorical(y_test)
+    test_acc = model.evaluate(X_test, [y_eval, y_eval, y_eval, y_eval, y_eval], verbose=1, sample_weight=weights_test)[acc_index]
 
     # TODO: refactor and understand
     # make predictions

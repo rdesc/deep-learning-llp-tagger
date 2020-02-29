@@ -40,6 +40,7 @@ def train_llp(file_name, model_to_do, useGPU2, constit_input, track_input, MSeg_
     :param hidden_fraction: Fraction by which to multiple the dense layers
     :param kfold: KFold object to do KFold cross validation
     """
+    # make a single directory for kfold maybe?
     # TODO: add logic to maybe not add directories/other plots when doing kfold cv
     # Setup directories
     print("\nSetting up directories...\n")
@@ -98,7 +99,7 @@ def train_llp(file_name, model_to_do, useGPU2, constit_input, track_input, MSeg_
     #    train_test_split(X, Y, weights, mcWeights, Z, test_size=0.2)
 
     # do kfold cross validation
-    n_folds = 0
+    n_folds = 1
     roc_scores, acc_scores = list(), list()
     for train_ix, test_ix in kfold.split(X):
         print("\nDoing KFold iteration # %.0f...\n" % n_folds)
@@ -121,9 +122,9 @@ def train_llp(file_name, model_to_do, useGPU2, constit_input, track_input, MSeg_
             train_test_split(X_test, y_test, weights_test, mcWeights_test, Z_test, test_size=0.5)  # TODO: random seed?
 
         # Delete variables we don't need anymore (need to save memory...)
-        del X
-        del Y
-        del Z
+#        del X
+#        del Y
+#        del Z
 
         # Convert labels to categorical (needed for multiclass training)
         y_train = np_utils.to_categorical(y_train)
@@ -175,7 +176,6 @@ def train_llp(file_name, model_to_do, useGPU2, constit_input, track_input, MSeg_
 
         # Setup testing input, outputs, and weights
         x_to_test = [X_test_constit, X_test_track, X_test_MSeg, X_test_jet.values]
-        y_to_test = [y_test, y_test, y_test, y_test, y_test]
         weights_to_test = [weights_test.values, weights_test.values, weights_test.values, weights_test.values,
                            weights_test.values] 
 
@@ -230,7 +230,7 @@ def train_llp(file_name, model_to_do, useGPU2, constit_input, track_input, MSeg_
         # Evaluate Model with ROC curves
         print("\nEvaluating model...\n")
         # TODO: improve doc on Z and mcWeights
-        roc_auc, test_acc = evaluate_model(model, dir_name, x_to_test, y_to_test, weights_to_test, Z_test, mcWeights_test)
+        roc_auc, test_acc = evaluate_model(model, dir_name, x_to_test, y_test, weights_to_test, Z_test, mcWeights_test)
         roc_scores.append(roc_auc)
         acc_scores.append(test_acc)
         print('ROC area under curve: %.3f' % roc_auc)

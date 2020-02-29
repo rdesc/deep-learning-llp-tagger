@@ -18,7 +18,7 @@ args = parser.parse_args(['--file_name', 'foo', '@args.txt'])
 args = parser.parse_args(['--finalPlots_model', 'foo', '@args.txt'])
 
 # dataset names
-name_list = ["processed_output_Lxy1500_Lz3000_slim0.1.pkl"]
+name_list = ["processed_output_Lxy1500_Lz3000.pkl"]
 # model names
 model_to_do_list = ["conv1D_lstm_", "lstm_", "conv1D_"]
 
@@ -80,13 +80,16 @@ if args.doTraining:
             roc_results.append(roc_scores)
             acc_results.append(acc_scores)
 
+            # TODO: save results in a .txt file somewhere
             # Free up some memory
             gc.collect()
 
     # Make boxplots of kFold CV
     if roc_results and acc_results:
+        # save results to file first
+        
         print("\nPlotting KFold Cross Validation results...\n")
-        creation_time = str(datetime.now().strftime('%m-%d_%H:%M/'))
+        creation_time = str(datetime.now().strftime('%m-%d_%H:%M'))
 
         # plot roc auc scores
         fig = plt.figure()
@@ -94,7 +97,7 @@ if args.doTraining:
         ax = fig.add_subplot(111)
         plt.boxplot(roc_results)
         ax.set_xticklabels(model_to_do_list)
-        fig.savefig("plots/kfold_cv_roc_" + creation_time, format="pdf", transparent=True)
+        fig.savefig("plots/kfold_cv_roc_" + creation_time + ".pdf", format="pdf", transparent=True)
 
         # plot accuracy scores
         fig = plt.figure()
@@ -102,7 +105,14 @@ if args.doTraining:
         ax = fig.add_subplot(111)
         plt.boxplot(acc_results)
         ax.set_xticklabels(model_to_do_list)
-        fig.savefig("plots/kfold_cv_acc_" + creation_time, format="pdf", transparent=True)
+        fig.savefig("plots/kfold_cv_acc_" + creation_time + ".pdf", format="pdf", transparent=True)
+
+        f = open("plots/kfold_data_" + creation_time + ".txt", "w+")
+        f.write("ROC\n")
+        f.write(str(roc_results))
+        f.write("\nACC\n")
+        f.write(str(acc_results))
+        f.close()
 
 if args.makeFinalPlots:
     input_file = args.file_name + "/validation_dec24.pkl"
