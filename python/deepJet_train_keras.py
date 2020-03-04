@@ -114,11 +114,11 @@ def train_llp(file_name, model_to_do, useGPU2, constit_input, track_input, MSeg_
         # initialize lists to store metrics
         roc_scores, acc_scores = list(), list()
         # initialize counter for current fold iteration
-        n_folds = 1
+        n_folds = 0
         # do KFold Cross Validation
         for train_ix, test_ix in kfold.split(X):
-            print("\nDoing KFold iteration # %.0f...\n" % n_folds)
             n_folds += 1
+            print("\nDoing KFold iteration # %.0f...\n" % n_folds)
             # select samples
             X_train, y_train, weights_train, mcWeights_train, Z_train = \
                 X.iloc[train_ix], Y.iloc[train_ix], weights.iloc[train_ix], mcWeights.iloc[train_ix], Z.iloc[train_ix]
@@ -131,7 +131,7 @@ def train_llp(file_name, model_to_do, useGPU2, constit_input, track_input, MSeg_
                                                            dropout_value, hidden_fraction, plt_model, batch_size, dir_name, learning_rate, epochs, kfold, n_folds)
 
             roc_scores.append(roc_auc)
-            roc_scores.append(test_acc)
+            acc_scores.append(test_acc)
 
         return roc_scores, acc_scores
 
