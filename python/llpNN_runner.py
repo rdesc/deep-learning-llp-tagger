@@ -46,9 +46,9 @@ roc_results = []
 acc_results = []
 if args.doKFold:
     # Setup KFold Cross Validation
-    seed = np.random.randint(100)
+    seed = np.random.randint(100)  # ensures random shuffling same across models
     n_folds = 5  # should be greater than 2 (usually around 5 - 10 folds)
-    kfold = KFold(n_folds, True, seed)
+    kfold = KFold(n_splits=n_folds, shuffle=True, random_state=seed)
 
 if args.doTraining:
     # iterate over each dataset
@@ -85,7 +85,7 @@ if args.doTraining:
             gc.collect()
 
     # Make boxplots of kFold CV results
-    if roc_results and acc_results:
+    if args.doKFold:
         print("\nPlotting KFold Cross Validation results...\n")
         creation_time = str(datetime.now().strftime('%m-%d_%H:%M'))
 
