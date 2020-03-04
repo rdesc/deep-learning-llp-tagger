@@ -157,7 +157,7 @@ def build_train_evaluate_model(constit_input, track_input, MSeg_input, jet_input
     if kfold is None:
         random_state = np.random.randint(100)
     else:
-        random_state = kfold.random_state()
+        random_state = kfold.random_state
 
     # Divide testing set into epoch-by-epoch validation and final evaluation sets
     X_test, X_val, y_test, y_val, weights_test, weights_val, mcWeights_test, mcWeights_val, Z_test, Z_val = \
