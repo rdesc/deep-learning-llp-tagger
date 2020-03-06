@@ -282,9 +282,9 @@ def setup_model_architecture(constit_input, track_input, MSeg_input, jet_input, 
     # Setup concatenation layer
     concat_tensor = concatenate([constit_output_tensor, track_output_tensor, MSeg_ouput_tensor, jet_input_tensor])
     # Setup Dense + Dropout layers
-    concat_tensor = Dense(hidden_fraction * 512, activation='relu')(concat_tensor)
+    concat_tensor = Dense(int(hidden_fraction * 512), activation='relu')(concat_tensor)
     concat_tensor = Dropout(dropout_value)(concat_tensor)
-    concat_tensor = Dense(hidden_fraction * 64, activation='relu')(concat_tensor)
+    concat_tensor = Dense(int(hidden_fraction * 64), activation='relu')(concat_tensor)
     concat_tensor = Dropout(dropout_value)(concat_tensor)
     # Setup final layer
     main_output_tensor = Dense(3, activation='softmax', name='main_output')(concat_tensor)
