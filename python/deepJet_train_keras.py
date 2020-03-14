@@ -262,7 +262,7 @@ def build_train_evaluate_model(constit_input, track_input, MSeg_input, jet_input
     # Evaluate Model with ROC curves
     print("\nEvaluating model...\n")
     # TODO: improve doc on Z and mcWeights
-    roc_auc, test_acc = evaluate_model(model, dir_name, x_to_test, y_test, weights_to_test, Z_test, mcWeights_test)
+    roc_auc, test_acc = evaluate_model(model, dir_name, x_to_test, y_test, weights_to_test, Z_test, mcWeights_test, n_folds)
     print('ROC area under curve: %.3f' % roc_auc)
     print('Model accuracy: %.3f' % test_acc)
 

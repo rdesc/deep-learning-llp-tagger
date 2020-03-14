@@ -1,12 +1,11 @@
 import argparse
 import gc
-import shutil
 from deepJet_train_keras import *
 from make_final_plots import *
 from model_input.jet_input import JetInput
 from model_input.model_input import ModelInput
 from sklearn.model_selection import StratifiedKFold
-from datetime import datetime
+from utils import process_kfold_run
 
 parser = argparse.ArgumentParser(fromfile_prefix_chars='@')
 parser.add_argument('--file_name')
@@ -87,47 +86,8 @@ if args.doTraining:
             gc.collect()
 
     # Make boxplots of kFold CV results
-    # TODO: move to utils maybe?
     if args.doKFold:
-        print("\nPlotting KFold Cross Validation results...\n")
-        creation_time = str(datetime.now().strftime('%m-%d_%H:%M'))
-        kfold_dir = "kfold_" + creation_time
-
-        # create directory for kfold plots
-        os.makedirs("plots/" + kfold_dir)
-        # move model files to kfold directory
-        for f in model_files:
-            shutil.move("plots/" + f, "plots/" + kfold_dir + "/" + f) 
-      
-        # plot roc auc scores
-        fig = plt.figure()
-        fig.suptitle('Model Comparison with ROC AUC metric')
-        ax = fig.add_subplot(111)
-        plt.boxplot(roc_results)
-        ax.set_xticklabels(model_to_do_list)
-        fig.savefig("plots/" + kfold_dir + "/kfold_cv_roc.pdf", format="pdf", transparent=True)
-
-        # plot accuracy scores
-        fig = plt.figure()
-        fig.suptitle('Model Comparison with accuracy metric')
-        ax = fig.add_subplot(111)
-        plt.boxplot(acc_results)
-        ax.set_xticklabels(model_to_do_list)
-        fig.savefig("plots/" + kfold_dir + "/kfold_cv_acc.pdf", format="pdf", transparent=True)
-
-        # save results to file
-        f = open("plots/" + kfold_dir + "/kfold_data.txt", "w+")
-        f.write("File name list\n")
-        f.write(str(name_list))
-        f.write("\nModel list\n")
-        f.write(str(model_to_do_list))
-        f.write("\nROC AUC data\n")
-        f.write(str(roc_results))
-        f.write("\nAccuracy data\n")
-        f.write(str(acc_results))
-        f.write("\nSeed\n")
-        f.write(str(seed))
-        f.close()
+        process_kfold_run(roc_results, acc_results, model_to_do_list, model_files, name_list, seed)
 
 if args.makeFinalPlots:
     input_file = args.file_name + "/validation_dec24.pkl"

@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import os
+import shutil
 from datetime import datetime
 import matplotlib.pyplot as plt
 from evaluate_training import find_threshold, signal_llp_efficiencies, bkg_falsePositives, \
@@ -52,7 +53,50 @@ def load_dataset(filename):
     return df
 
 
-def evaluate_model(model, dir_name, X_test, y_test, weights_test, Z_test, mcWeights_test):
+def process_kfold_run(roc_results, acc_results, model_to_do_list, model_files, name_list, seed):
+    """Generates ROC AUC and accuracy plots from KFold run and saves results to a .txt file"""
+    print("\nPlotting KFold Cross Validation results...\n")
+    creation_time = str(datetime.now().strftime('%m-%d_%H:%M'))
+    kfold_dir = "kfold_" + creation_time
+
+    # create directory for kfold plots
+    os.makedirs("plots/" + kfold_dir)
+    # move model files to kfold directory
+    for f in model_files:
+        shutil.move("plots/" + f, "plots/" + kfold_dir + "/" + f)
+
+        # plot roc auc scores
+    fig = plt.figure()
+    fig.suptitle('Model Comparison with ROC AUC metric')
+    ax = fig.add_subplot(111)
+    plt.boxplot(roc_results)
+    ax.set_xticklabels(model_to_do_list)
+    fig.savefig("plots/" + kfold_dir + "/kfold_cv_roc.pdf", format="pdf", transparent=True)
+
+    # plot accuracy scores
+    fig = plt.figure()
+    fig.suptitle('Model Comparison with accuracy metric')
+    ax = fig.add_subplot(111)
+    plt.boxplot(acc_results)
+    ax.set_xticklabels(model_to_do_list)
+    fig.savefig("plots/" + kfold_dir + "/kfold_cv_acc.pdf", format="pdf", transparent=True)
+
+    # save results to file
+    f = open("plots/" + kfold_dir + "/kfold_data.txt", "w+")
+    f.write("File name list\n")
+    f.write(str(name_list))
+    f.write("\nModel list\n")
+    f.write(str(model_to_do_list))
+    f.write("\nROC AUC data\n")
+    f.write(str(roc_results))
+    f.write("\nAccuracy data\n")
+    f.write(str(acc_results))
+    f.write("\nSeed\n")
+    f.write(str(seed))
+    f.close()
+
+
+def evaluate_model(model, dir_name, X_test, y_test, weights_test, Z_test, mcWeights_test, n_folds):
     # TODO: add doc for method + params
     # add kfold param
 
@@ -91,7 +135,9 @@ def evaluate_model(model, dir_name, X_test, y_test, weights_test, Z_test, mcWeig
     third_label = 2
     # We'll be writing the stats to training_details.txt
     f = open(destination + "training_details.txt", "a")
-    f.write("\nEvaluation metrics\n")  # TODO: add to print statement for fold iteration number
+    if n_folds:
+        f.write("KFold iteration # %s" % str(n_folds))
+    f.write("\nEvaluation metrics\n")
 
     # Find threshold, or at what label we will have the required percentage of 'test_label' correctl predicted
     test_threshold, leftovers = find_threshold(prediction, y_test, mcWeights_test, threshold * 100, third_label)
