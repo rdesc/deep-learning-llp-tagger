@@ -97,8 +97,7 @@ def process_kfold_run(roc_results, acc_results, model_to_do_list, model_files, n
 
 
 def evaluate_model(model, dir_name, X_test, y_test, weights_test, Z_test, mcWeights_test, n_folds):
-    # TODO: add doc for method + params
-    # add kfold param
+    # TODO: add doc for method + params, add kfold param
 
     # evaluate the model using Keras api
     acc_index = model.metrics_names.index('main_output_categorical_accuracy')
@@ -127,7 +126,7 @@ def evaluate_model(model, dir_name, X_test, y_test, weights_test, Z_test, mcWeig
     mcWeights_test[y_test == 1] *= sig_weight_length / sig_weight
     destination = "plots/" + dir_name + "/"
     # TODO: to add other plots when nfold?
-    #plot_prediction_histograms(destination, prediction, y_test, mcWeights_test, dir_name)
+    plot_prediction_histograms(destination, prediction, y_test, mcWeights_test, dir_name)
 
     # This will be the BIB efficiency to aim for when making ROC curve
     threshold = 1 - 0.0316
@@ -145,37 +144,37 @@ def evaluate_model(model, dir_name, X_test, y_test, weights_test, Z_test, mcWeig
     bkg_eff, tag_eff, roc_auc = make_multi_roc_curve(prediction, y_test, mcWeights_test, test_threshold, third_label,
                                                      leftovers)
     # TODO: uncomment rest 
-    # # Write AUC to training_details.txt
-    f.write("%s, %s\n" % (str(-threshold + 1), str(roc_auc)))  # TODO: print out this is threshold and then roc_auc
-    f.write("Accuracy: %s\n" % str(test_acc)) # TODO: add spacing
-    # print("AUC: " + str(roc_auc))
-    # # Make ROC curve
-    # plt.plot(tag_eff, bkg_eff, label=f"BIB Eff: {threshold :.3f}" + f", AUC: {roc_auc:.3f}")
-    # plt.xlabel("LLP Tagging Efficiency")
-    # axes = plt.gca()
-    # axes.set_xlim([0, 1])
-    #
-    # # Finish and plot ROC curve family
-    # plt.legend()
-    # plt.yscale('log', nonposy='clip')
-    # signal_test = prediction[y_test == 1]
-    # qcd_test = prediction[y_test == 0]
-    #
-    # print(signal_test[0:100].shape)
-    # print("Length of Signal: " + str(len(signal_test)) + ", length of signal with weight 1: " + str(
-    #     len(signal_test[signal_test[:, 1] < 0.1])))
-    # print("Length of QCD: " + str(len(qcd_test)) + ", length of qcd with weight 1: " + str(
-    #     len(qcd_test[qcd_test[:, 1] < 0.1])))
-    # if third_label == 2:
-    #     plt.ylabel("QCD Rejection")
-    #     plt.savefig(destination + "roc_curve_atlas_rej_bib" + ".pdf", format='pdf', transparent=True)
-    # if third_label == 0:
-    #     plt.ylabel("BIB Rejection")
-    #     plt.savefig(destination + "roc_curve_atlas_rej_qcd" + ".pdf", format='pdf', transparent=True)
-    # plt.clf()
-    # # Make plots of signal efficiency vs mH, mS
-    # signal_llp_efficiencies(prediction, y_test, Z_test, destination, f)
-    # bkg_falsePositives(prediction, y_test, Z_test, destination, f)
+    # Write AUC to training_details.txt
+    f.write("Threshold: %s, ROC AUC: %s\n" % (str(-threshold + 1), str(roc_auc)))
+    f.write("Accuracy: %s\n" % str(test_acc))
+    print("AUC: " + str(roc_auc))
+    # Make ROC curve
+    plt.plot(tag_eff, bkg_eff, label=f"BIB Eff: {threshold :.3f}" + f", AUC: {roc_auc:.3f}")
+    plt.xlabel("LLP Tagging Efficiency")
+    axes = plt.gca()
+    axes.set_xlim([0, 1])
+
+    # Finish and plot ROC curve family
+    plt.legend()
+    plt.yscale('log', nonposy='clip')
+    signal_test = prediction[y_test == 1]
+    qcd_test = prediction[y_test == 0]
+
+    print(signal_test[0:100].shape)
+    print("Length of Signal: " + str(len(signal_test)) + ", length of signal with weight 1: " + str(
+        len(signal_test[signal_test[:, 1] < 0.1])))
+    print("Length of QCD: " + str(len(qcd_test)) + ", length of qcd with weight 1: " + str(
+        len(qcd_test[qcd_test[:, 1] < 0.1])))
+    if third_label == 2:
+        plt.ylabel("QCD Rejection")
+        plt.savefig(destination + "roc_curve_atlas_rej_bib" + ".pdf", format='pdf', transparent=True)
+    if third_label == 0:
+        plt.ylabel("BIB Rejection")
+        plt.savefig(destination + "roc_curve_atlas_rej_qcd" + ".pdf", format='pdf', transparent=True)
+    plt.clf()
+    # Make plots of signal efficiency vs mH, mS
+    signal_llp_efficiencies(prediction, y_test, Z_test, destination, f)
+    bkg_falsePositives(prediction, y_test, Z_test, destination, f)
     f.close()
 
     return roc_auc, test_acc

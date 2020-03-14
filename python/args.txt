@@ -2,3 +2,4 @@
 --doTraining
 --useGPU2
 --doKFold
+--doGridSearch
