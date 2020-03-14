@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import tensorflow as tf
 import numpy as np
 import keras
+from keras import metrics
 from keras.models import Model, load_model
 from keras.layers import Dense, Dropout, concatenate
 from keras.utils import np_utils, plot_model
@@ -108,7 +109,7 @@ def train_llp(file_name, model_to_do, useGPU2, constit_input, track_input, MSeg_
                                                        mcWeights_train, mcWeights_test, weights_train, weights_test, Z_test, Z_train, reg_value, frac,
                                                        dropout_value, hidden_fraction, plt_model, batch_size, dir_name, learning_rate, epochs)
 
-        return roc_auc, test_acc
+        return roc_auc, test_acc, dir_name
 
     else:
         # initialize lists to store metrics
@@ -116,7 +117,7 @@ def train_llp(file_name, model_to_do, useGPU2, constit_input, track_input, MSeg_
         # initialize counter for current fold iteration
         n_folds = 0
         # do KFold Cross Validation
-        for train_ix, test_ix in kfold.split(X):
+        for train_ix, test_ix in kfold.split(X, Y):
             n_folds += 1
             print("\nDoing KFold iteration # %.0f...\n" % n_folds)
             # select samples
@@ -133,7 +134,7 @@ def train_llp(file_name, model_to_do, useGPU2, constit_input, track_input, MSeg_
             roc_scores.append(roc_auc)
             acc_scores.append(test_acc)
 
-        return roc_scores, acc_scores
+        return roc_scores, acc_scores, dir_name
 
 
 def build_train_evaluate_model(constit_input, track_input, MSeg_input, jet_input, X_train, X_test, y_train, y_test, mcWeights_train,
@@ -230,8 +231,8 @@ def build_train_evaluate_model(constit_input, track_input, MSeg_input, jet_input
     plt.clf()
     plt.cla()
     plt.figure()
-    plt.plot(history.history['main_output_acc'])
-    plt.plot(history.history['val_main_output_acc'])
+    plt.plot(history.history['main_output_categorical_accuracy'])
+    plt.plot(history.history['val_main_output_categorical_accuracy'])
     plt.title('Model accuracy')
     plt.ylabel('Accuracy')
     plt.xlabel('Epoch')
@@ -303,7 +304,7 @@ def setup_model_architecture(constit_input, track_input, MSeg_input, jet_input, 
 
     # Compile Model
     model.compile(optimizer=optimizer, loss='categorical_crossentropy', loss_weights=weights_for_loss,
-                  metrics=['accuracy'])
+                  metrics=[metrics.categorical_accuracy])
 
     return model
 

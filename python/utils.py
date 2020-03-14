@@ -54,11 +54,12 @@ def load_dataset(filename):
 
 def evaluate_model(model, dir_name, X_test, y_test, weights_test, Z_test, mcWeights_test):
     # TODO: add doc for method + params
+    # add kfold param
 
     # evaluate the model using Keras api
-    acc_index = model.metrics_names.index('main_output_acc')
+    acc_index = model.metrics_names.index('main_output_categorical_accuracy')
     # model.evaluate expects target data to be the same shape/format as model.fit
-    y_eval = np_utils.to_categorical(y_test)
+    y_eval = np_utils.to_categorical(y_test) 
     y_eval = [y_eval, y_eval, y_eval, y_eval, y_eval]
     # get accuracy of model on test set
     test_acc = model.evaluate(X_test, y_eval, verbose=1, sample_weight=weights_test)[acc_index]
@@ -90,15 +91,17 @@ def evaluate_model(model, dir_name, X_test, y_test, weights_test, Z_test, mcWeig
     third_label = 2
     # We'll be writing the stats to training_details.txt
     f = open(destination + "training_details.txt", "a")
-    f.write("\nEvaluation metrics\n")
+    f.write("\nEvaluation metrics\n")  # TODO: add to print statement for fold iteration number
 
     # Find threshold, or at what label we will have the required percentage of 'test_label' correctl predicted
     test_threshold, leftovers = find_threshold(prediction, y_test, mcWeights_test, threshold * 100, third_label)
     # Make ROC curve of leftovers, those not tagged by above function
     bkg_eff, tag_eff, roc_auc = make_multi_roc_curve(prediction, y_test, mcWeights_test, test_threshold, third_label,
                                                      leftovers)
+    # TODO: uncomment rest 
     # # Write AUC to training_details.txt
-    # f.write("%s, %s\n" % (str(-threshold + 1), str(roc_auc)))
+    f.write("%s, %s\n" % (str(-threshold + 1), str(roc_auc)))  # TODO: print out this is threshold and then roc_auc
+    f.write("Accuracy: %s\n" % str(test_acc)) # TODO: add spacing
     # print("AUC: " + str(roc_auc))
     # # Make ROC curve
     # plt.plot(tag_eff, bkg_eff, label=f"BIB Eff: {threshold :.3f}" + f", AUC: {roc_auc:.3f}")
@@ -127,6 +130,6 @@ def evaluate_model(model, dir_name, X_test, y_test, weights_test, Z_test, mcWeig
     # # Make plots of signal efficiency vs mH, mS
     # signal_llp_efficiencies(prediction, y_test, Z_test, destination, f)
     # bkg_falsePositives(prediction, y_test, Z_test, destination, f)
-    # f.close()
+    f.close()
 
     return roc_auc, test_acc
