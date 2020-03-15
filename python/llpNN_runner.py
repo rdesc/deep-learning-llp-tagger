@@ -58,13 +58,11 @@ if args.doTraining:
         file_name = args.file_name + file
 
         for model in model_to_do_list:
-            model_to_do = model
-
             # grid search
             for lr in lr_values:
                 for reg in reg_values:
                     for i in range(len(filters_cnn_constit)):
-                        model_to_do = model_to_do + "lr=" + str(lr) + ",reg=" + str(reg) + ",fconv=" + \
+                        model_to_do = model + "lr=" + str(lr) + ",reg=" + str(reg) + ",fconv=" + \
                                       str(filters_cnn_constit[i][3])
 
                         print("\nModel: " + model_to_do)
