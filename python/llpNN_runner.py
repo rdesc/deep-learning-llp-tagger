@@ -1,13 +1,11 @@
 import argparse
 import gc
-import shutil
-from datetime import datetime
 from deepJet_train_keras import *
 from make_final_plots import *
 from model_input.jet_input import JetInput
 from model_input.model_input import ModelInput
 from sklearn.model_selection import StratifiedKFold
-from utils import process_kfold_run
+from utils import process_kfold_run, process_grid_search_run
 
 parser = argparse.ArgumentParser(fromfile_prefix_chars='@')
 parser.add_argument('--file_name')
@@ -103,43 +101,9 @@ if args.doTraining:
     if args.doKFold:
         process_kfold_run(roc_results, acc_results, model_to_do_list, model_files, name_list, seed)
 
-    # Put all model files in the same directory
+    # Put all model files in the same directory and save results to .txt file
     if args.doGridSearch:
-        creation_time = str(datetime.now().strftime('%m-%d_%H:%M'))
-        gridSearch_dir = "gridSearch_" + creation_time
-        for f in model_files:
-            shutil.move("plots/" + f, "plots/" + gridSearch_dir + "/" + f)
-
-        # aggregate model metrics and reorder lists in decreasing performance order
-        roc_results = np.asarray(roc_results)
-        acc_results = np.asarray(acc_results)
-        model_files = np.asarray(model_files)
-        order = np.argsort(-1*roc_results)
-        roc_results = roc_results[order]
-        acc_results = acc_results[order]
-        model_files = model_files[order]
-
-        # save results to file
-        f = open("plots/" + gridSearch_dir + "/gridSearch_data.txt", "w+")
-        f.write("Model list\n")
-        f.write(str(model_files))
-        f.write("\n\nROC AUC data\n")
-        f.write(str(roc_results))
-        f.write("\n\nAccuracy data\n")
-        f.write(str(acc_results))
-        f.write("\n\nOrder\n")
-        f.write(str(order))
-        f.write("\n\nLearning values\n")
-        f.write(str(lr_values))
-        f.write("\n\nRegularization values\n")
-        f.write(str(reg_values))
-        f.write("\n\nFilters constit\n")
-        f.write(str(filters_cnn_constit))
-        f.write("\n\nFilters track\n")
-        f.write(str(filters_cnn_track))
-        f.write("\n\nFilters MSeg\n")
-        f.write(str(filters_cnn_MSeg))
-        f.close()
+        process_grid_search_run(roc_results, acc_results, model_files, lr_values, reg_values, filters_cnn_constit, filters_cnn_track, filters_cnn_MSeg)
 
 if args.makeFinalPlots:
     input_file = args.file_name + "/validation_dec24.pkl"

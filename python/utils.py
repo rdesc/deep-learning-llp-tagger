@@ -96,6 +96,76 @@ def process_kfold_run(roc_results, acc_results, model_to_do_list, model_files, n
     f.close()
 
 
+def process_grid_search_run(roc_results, acc_results, model_files, lr_values, reg_values, filters_cnn_constit, filters_cnn_track, filters_cnn_MSeg):
+    """Aggregates model files and metrics built during grid search"""
+    print("\nProcessing grid search results...\n")
+    creation_time = str(datetime.now().strftime('%m-%d_%H:%M'))
+    gridSearch_dir = "gridSearch_" + creation_time
+    print("\nSuccessfully trained %.0f models\n" % len(model_files))
+    for f in model_files:
+        shutil.move("plots/" + f, "plots/" + gridSearch_dir + "/" + f)
+
+    # aggregate model metrics and reorder lists in decreasing performance order
+    roc_results = np.asarray(roc_results)
+    acc_results = np.asarray(acc_results)
+    model_files = np.asarray(model_files)
+    order = np.argsort(-1 * roc_results)
+    roc_results = roc_results[order]
+    acc_results = acc_results[order]
+    model_files = model_files[order]
+
+    # rebuild all the model hyper-parameter configurations
+    lr = []
+    reg = []
+    constit = []
+    track = []
+    mseg = []
+    for l in lr_values:
+        for r in reg_values:
+            for i in range(len(filters_cnn_track)):
+                lr.append(l)
+                reg.append(r)
+                constit.append(filters_cnn_constit[i][-1])
+                track.append(filters_cnn_track[i][-1])
+                mseg.append(filters_cnn_MSeg[i][-1])
+
+    # put data into a pandas DataFrame
+    columns = ['learning_rate', 'regularization', 'cnn_final_layer_constit', 'cnn_final_layer_track', 'cnn_final_layer_MSeg', 'roc_score', 'acc_score', 'rank']
+    data_list = [lr, reg, constit, track, mseg, roc_results, acc_results, order]
+    data = {}
+    for i in range(len(columns)):
+        data[columns[i]] = data_list[i]
+    df = pd.DataFrame(data, columns=columns)
+
+    # save df to file
+    df.to_csv("plots/" + gridSearch_dir + "/df.csv", index=False)
+
+    # print out correlation matrix
+    print(df.corr())
+
+    # save results to file
+    f = open("plots/" + gridSearch_dir + "/gridSearch_data.txt", "w+")
+    f.write("Model list\n")
+    f.write(str(model_files))
+    f.write("\n\nROC AUC data\n")
+    f.write(str(roc_results))
+    f.write("\n\nAccuracy data\n")
+    f.write(str(acc_results))
+    f.write("\n\nOrder\n")
+    f.write(str(order))
+    f.write("\n\nLearning values\n")
+    f.write(str(lr_values))
+    f.write("\n\nRegularization values\n")
+    f.write(str(reg_values))
+    f.write("\n\nFilters constit\n")
+    f.write(str(filters_cnn_constit))
+    f.write("\n\nFilters track\n")
+    f.write(str(filters_cnn_track))
+    f.write("\n\nFilters MSeg\n")
+    f.write(str(filters_cnn_MSeg))
+    f.close()
+
+
 def evaluate_model(model, dir_name, X_test, y_test, weights_test, Z_test, mcWeights_test, n_folds):
     # TODO: add doc for method + params, add kfold param
 
