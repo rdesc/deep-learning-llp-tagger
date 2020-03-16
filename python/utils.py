@@ -105,14 +105,8 @@ def process_grid_search_run(roc_results, acc_results, model_files, lr_values, re
     for f in model_files:
         shutil.move("plots/" + f, "plots/" + gridSearch_dir + "/" + f)
 
-    # aggregate model metrics and reorder lists in decreasing performance order
-    roc_results = np.asarray(roc_results)
-    acc_results = np.asarray(acc_results)
-    model_files = np.asarray(model_files)
+    # find the ordering based on model metric
     order = np.argsort(-1 * roc_results)
-    roc_results = roc_results[order]
-    acc_results = acc_results[order]
-    model_files = model_files[order]
 
     # rebuild all the model hyper-parameter configurations
     lr = []
