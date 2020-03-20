@@ -107,6 +107,7 @@ def process_grid_search_run(roc_results, acc_results, model_files, lr_values, re
 
     # find the ordering based on model metric
     order = np.argsort(-1 * np.asarray(roc_results))
+    ranks = order.argsort()
 
     # rebuild all the model hyper-parameter configurations
     lr = []
@@ -125,7 +126,7 @@ def process_grid_search_run(roc_results, acc_results, model_files, lr_values, re
 
     # put data into a pandas DataFrame
     columns = ['learning_rate', 'regularization', 'cnn_final_layer_constit', 'cnn_final_layer_track', 'cnn_final_layer_MSeg', 'roc_score', 'acc_score', 'rank']
-    data_list = [lr, reg, constit, track, mseg, roc_results, acc_results, order]
+    data_list = [lr, reg, constit, track, mseg, roc_results, acc_results, ranks]
     data = {}
     for i in range(len(columns)):
         data[columns[i]] = data_list[i]
@@ -145,8 +146,8 @@ def process_grid_search_run(roc_results, acc_results, model_files, lr_values, re
     f.write(str(roc_results))
     f.write("\n\nAccuracy data\n")
     f.write(str(acc_results))
-    f.write("\n\nOrder\n")
-    f.write(str(order))
+    f.write("\n\nRank\n")
+    f.write(str(ranks))
     f.write("\n\nLearning values\n")
     f.write(str(lr_values))
     f.write("\n\nRegularization values\n")
