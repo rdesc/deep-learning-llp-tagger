@@ -2,12 +2,14 @@ import os
 import matplotlib
 import matplotlib.pyplot as plt
 import tensorflow as tf
+import numpy as np
 import keras
+from keras import metrics
 from keras.models import Model, load_model
 from keras.layers import Dense, Dropout, concatenate
 from keras.utils import np_utils, plot_model
 from keras.callbacks import EarlyStopping, ModelCheckpoint
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, KFold
 from utils import load_dataset, create_directories, evaluate_model
 
 matplotlib.use('agg')
@@ -20,7 +22,7 @@ os.environ['exception_verbosity'] = 'high'
 
 
 def train_llp(file_name, model_to_do, useGPU2, constit_input, track_input, MSeg_input, jet_input, plt_model=False, frac=1.0,
-              batch_size=5000, reg_value=0.001, dropout_value=0.1, epochs=50, learning_rate=0.002, hidden_fraction=1):
+              batch_size=5000, reg_value=0.001, dropout_value=0.1, epochs=50, learning_rate=0.002, hidden_fraction=1, kfold=None):
     """
     Takes in arguments to change architecture of network, does training, then runs evaluate_training
     :param file_name: Name of the .pkl file containing all the data
@@ -38,6 +40,7 @@ def train_llp(file_name, model_to_do, useGPU2, constit_input, track_input, MSeg_
     :param epochs: Number of epochs to train the model
     :param learning_rate: Learning rate
     :param hidden_fraction: Fraction by which to multiple the dense layers
+    :param kfold: KFold object to do KFold cross validation
     """
     # Setup directories
     print("\nSetting up directories...\n")
@@ -84,16 +87,67 @@ def train_llp(file_name, model_to_do, useGPU2, constit_input, track_input, MSeg_
 
     # Label Z as parametrized variables
     Z = df.loc[:, 'llp_mH':'llp_mS']
-    mass_array = (df.groupby(['llp_mH', 'llp_mS']).size().reset_index().rename(columns={0: 'count'}))
-    mass_array['proportion'] = mass_array['count'] / len(df.index)  # TODO: never used??
+    # mass_array = (df.groupby(['llp_mH', 'llp_mS']).size().reset_index().rename(columns={0: 'count'}))
+    # mass_array['proportion'] = mass_array['count'] / len(df.index)  # TODO: never used??
 
     # Save memory
     del df
 
-    # Split data into train/test datasets
-    X_train, X_test, y_train, y_test, weights_train, weights_test, mcWeights_train, mcWeights_test, Z_train, Z_test = \
-        train_test_split(X, Y, weights, mcWeights, Z, test_size=0.2)
+    # Handle case if no KFold
+    if kfold is None:
+        # Split data into train/test datasets
+        X_train, X_test, y_train, y_test, weights_train, weights_test, mcWeights_train, mcWeights_test, Z_train, Z_test = \
+            train_test_split(X, Y, weights, mcWeights, Z, test_size=0.2)
 
+        # Delete variables to save memory
+        del X
+        del Y
+        del Z
+
+        # Call method that prepares data, builds model architecture, trains model, and evaluates model
+        roc_auc, test_acc = build_train_evaluate_model(constit_input, track_input, MSeg_input, jet_input, X_train, X_test, y_train, y_test,
+                                                       mcWeights_train, mcWeights_test, weights_train, weights_test, Z_test, Z_train, reg_value, frac,
+                                                       dropout_value, hidden_fraction, plt_model, batch_size, dir_name, learning_rate, epochs)
+
+        return roc_auc, test_acc, dir_name
+
+    else:
+        # initialize lists to store metrics
+        roc_scores, acc_scores = list(), list()
+        # initialize counter for current fold iteration
+        n_folds = 0
+        # do KFold Cross Validation
+        for train_ix, test_ix in kfold.split(X, Y):
+            n_folds += 1
+            print("\nDoing KFold iteration # %.0f...\n" % n_folds)
+            # select samples
+            X_train, y_train, weights_train, mcWeights_train, Z_train = \
+                X.iloc[train_ix], Y.iloc[train_ix], weights.iloc[train_ix], mcWeights.iloc[train_ix], Z.iloc[train_ix]
+            X_test, y_test, weights_test, mcWeights_test, Z_test = \
+                X.iloc[test_ix], Y.iloc[test_ix], weights.iloc[test_ix], mcWeights.iloc[test_ix], Z.iloc[test_ix]
+
+            # Call method that prepares data, builds model architecture, trains model, and evaluates model
+            roc_auc, test_acc = build_train_evaluate_model(constit_input, track_input, MSeg_input, jet_input, X_train, X_test, y_train, y_test,
+                                                           mcWeights_train, mcWeights_test, weights_train, weights_test, Z_test, Z_train, reg_value, frac,
+                                                           dropout_value, hidden_fraction, plt_model, batch_size, dir_name, learning_rate, epochs, kfold, n_folds)
+
+            roc_scores.append(roc_auc)
+            acc_scores.append(test_acc)
+
+        return roc_scores, acc_scores, dir_name
+
+
+def build_train_evaluate_model(constit_input, track_input, MSeg_input, jet_input, X_train, X_test, y_train, y_test, mcWeights_train,
+                               mcWeights_test, weights_train, weights_test, Z_test, Z_train, reg_value, frac, dropout_value,
+                               hidden_fraction, plt_model, batch_size, dir_name, learning_rate, epochs, kfold=None, n_folds=''):
+    """
+    This method has the following steps:
+        - Prepares train, test, and validate data
+        - Builds model architecture
+        - Does model training
+        - Does model evaluation
+    :return: ROC area under curve metric, and model accuracy metric
+    """
     # Keep fraction of events specified by frac param
     X_train = X_train.iloc[0:int(X_train.shape[0] * frac)]
     y_train = y_train.iloc[0:int(y_train.shape[0] * frac)]
@@ -101,14 +155,15 @@ def train_llp(file_name, model_to_do, useGPU2, constit_input, track_input, MSeg_
     mcWeights_train = mcWeights_train.iloc[0:int(mcWeights_train.shape[0] * frac)]  # TODO: never used??
     Z_train = Z_train.iloc[0:int(Z_train.shape[0] * frac)]  # TODO: never used??
 
+    if kfold is None:
+        random_state = np.random.randint(100)
+    else:
+        random_state = kfold.random_state
+
     # Divide testing set into epoch-by-epoch validation and final evaluation sets
     X_test, X_val, y_test, y_val, weights_test, weights_val, mcWeights_test, mcWeights_val, Z_test, Z_val = \
-        train_test_split(X_test, y_test, weights_test, mcWeights_test, Z_test, test_size=0.5)
-
-    # Delete variables we don't need anymore (need to save memory...)
-    del X
-    del Y
-    del Z
+        train_test_split(X_test, y_test, weights_test, mcWeights_test, Z_test, test_size=0.5,
+                         random_state=random_state)
 
     # Convert labels to categorical (needed for multiclass training)
     y_train = np_utils.to_categorical(y_train)
@@ -128,7 +183,6 @@ def train_llp(file_name, model_to_do, useGPU2, constit_input, track_input, MSeg_
                                                                               'nn_MSeg_etaPos_0', 'nn_MSeg_t0_')
     print("\nPreparing jet data...")
     X_train_jet, X_val_jet, X_test_jet = jet_input.extract_and_split_data(X_train, X_val, X_test, 'jet_pt', 'jet_phi')
-
     # Done preparing inputs for model!!
     print("\nDone preparing data for model!!!\n")
 
@@ -137,7 +191,6 @@ def train_llp(file_name, model_to_do, useGPU2, constit_input, track_input, MSeg_
     model = setup_model_architecture(constit_input, track_input, MSeg_input, jet_input, X_train_constit, X_train_track,
                                      X_train_MSeg, X_train_jet, reg_value, hidden_fraction, learning_rate,
                                      dropout_value)
-
     # Save model configuration for evaluation step
     model.save('keras_outputs/' + dir_name + '/model.h5')  # creates a HDF5 file
     # Show summary of model architecture
@@ -151,15 +204,15 @@ def train_llp(file_name, model_to_do, useGPU2, constit_input, track_input, MSeg_
     y_to_train = [y_train, y_train, y_train, y_train, y_train]
     weights_to_train = [weights_train.values, weights_train.values, weights_train.values, weights_train.values,
                         weights_train.values]
-
     # Setup validation inputs, outputs, and weights
     x_to_validate = [X_val_constit, X_val_track, X_val_MSeg, X_val_jet.values]
     y_to_validate = [y_val, y_val, y_val, y_val, y_val]
     weights_to_validate = [weights_val.values, weights_val.values, weights_val.values, weights_val.values,
                            weights_val.values]
-
-    # Setup testing input
+    # Setup testing input, outputs, and weights
     x_to_test = [X_test_constit, X_test_track, X_test_MSeg, X_test_jet.values]
+    weights_to_test = [weights_test.values, weights_test.values, weights_test.values, weights_test.values,
+                       weights_test.values]
 
     # Do training
     print("\nStarting training...\n")
@@ -169,7 +222,6 @@ def train_llp(file_name, model_to_do, useGPU2, constit_input, track_input, MSeg_
                                  verbose=True, save_best_only=True)]
     history = model.fit(x_to_train, y_to_train, sample_weight=weights_to_train, epochs=epochs, batch_size=batch_size,
                         validation_data=validation_data, callbacks=callbacks)
-
     # Save model weights
     model.save_weights('keras_outputs/' + dir_name + '/model_weights.h5')
 
@@ -179,18 +231,17 @@ def train_llp(file_name, model_to_do, useGPU2, constit_input, track_input, MSeg_
     plt.clf()
     plt.cla()
     plt.figure()
-    plt.plot(history.history['main_output_acc'])
-    plt.plot(history.history['val_main_output_acc'])
+    plt.plot(history.history['main_output_categorical_accuracy'])
+    plt.plot(history.history['val_main_output_categorical_accuracy'])
     plt.title('Model accuracy')
     plt.ylabel('Accuracy')
     plt.xlabel('Epoch')
     plt.legend(['Train', 'Test'], loc='upper left')
-    plt.savefig("plots/" + dir_name + "/accuracy_monitoring.pdf", format="pdf", transparent=True)
+    plt.savefig("plots/" + dir_name + "/accuracy_monitoring" + str(n_folds) + ".pdf", format="pdf", transparent=True)
     # Clear axes, figure, and figure window
     plt.clf()
     plt.cla()
     plt.figure()
-
     # Plot training & validation loss values
     plt.plot(history.history['main_output_loss'])
     plt.plot(history.history['val_main_output_loss'])
@@ -198,9 +249,11 @@ def train_llp(file_name, model_to_do, useGPU2, constit_input, track_input, MSeg_
     plt.ylabel('Loss')
     plt.xlabel('Epoch')
     plt.legend(['Train', 'Test'], loc='upper left')
-    plt.savefig("plots/" + dir_name + "/loss_monitoring.pdf", format="pdf", transparent=True)
-
+    plt.savefig("plots/" + dir_name + "/loss_monitoring" + str(n_folds) + ".pdf", format="pdf", transparent=True)
+    # close all open figures
+    plt.close('all')
     del model  # deletes the existing model
+
     # initialize model with same architecture
     model = load_model('keras_outputs/' + dir_name + '/model.h5')
     # load weights
@@ -209,7 +262,11 @@ def train_llp(file_name, model_to_do, useGPU2, constit_input, track_input, MSeg_
     # Evaluate Model with ROC curves
     print("\nEvaluating model...\n")
     # TODO: improve doc on Z and mcWeights
-    evaluate_model(model, dir_name, x_to_test, y_test, Z_test, mcWeights_test)
+    roc_auc, test_acc = evaluate_model(model, dir_name, x_to_test, y_test, weights_to_test, Z_test, mcWeights_test, n_folds)
+    print('ROC area under curve: %.3f' % roc_auc)
+    print('Model accuracy: %.3f' % test_acc)
+
+    return roc_auc, test_acc
 
 
 def setup_model_architecture(constit_input, track_input, MSeg_input, jet_input, X_train_constit, X_train_track,
@@ -226,9 +283,9 @@ def setup_model_architecture(constit_input, track_input, MSeg_input, jet_input, 
     # Setup concatenation layer
     concat_tensor = concatenate([constit_output_tensor, track_output_tensor, MSeg_ouput_tensor, jet_input_tensor])
     # Setup Dense + Dropout layers
-    concat_tensor = Dense(hidden_fraction * 512, activation='relu')(concat_tensor)
+    concat_tensor = Dense(int(hidden_fraction * 512), activation='relu')(concat_tensor)
     concat_tensor = Dropout(dropout_value)(concat_tensor)
-    concat_tensor = Dense(hidden_fraction * 64, activation='relu')(concat_tensor)
+    concat_tensor = Dense(int(hidden_fraction * 64), activation='relu')(concat_tensor)
     concat_tensor = Dropout(dropout_value)(concat_tensor)
     # Setup final layer
     main_output_tensor = Dense(3, activation='softmax', name='main_output')(concat_tensor)
@@ -242,12 +299,12 @@ def setup_model_architecture(constit_input, track_input, MSeg_input, jet_input, 
     # Setup Model
     model = Model(inputs=layers_to_input, outputs=layers_to_output)
 
-    # Setup optimiser (Nadam is good as it has decaying learning rate) TODO: to look into maybe
+    # Setup optimiser (Nadam is good as it has decaying learning rate)
     optimizer = keras.optimizers.Nadam(lr=learning_rate, beta_1=0.9, beta_2=0.999, epsilon=None, schedule_decay=0.004)
 
     # Compile Model
     model.compile(optimizer=optimizer, loss='categorical_crossentropy', loss_weights=weights_for_loss,
-                  metrics=['accuracy'])
+                  metrics=[metrics.categorical_accuracy])
 
     return model
 

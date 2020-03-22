@@ -1,11 +1,12 @@
 import pandas as pd
 import numpy as np
 import os
+import shutil
 from datetime import datetime
-from keras.models import load_model
 import matplotlib.pyplot as plt
-from evaluate_training import find_threshold, signal_llp_efficiencies, bkg_falsePositives,\
+from evaluate_training import find_threshold, signal_llp_efficiencies, bkg_falsePositives, \
     make_multi_roc_curve, plot_prediction_histograms
+from keras.utils import np_utils
 
 
 def create_directories(model_to_do, filename):
@@ -52,78 +53,129 @@ def load_dataset(filename):
     return df
 
 
-def evaluate_model(model, dir_name, X, y, Z, mcWeights):
-    # TODO: refactor
+def process_kfold_run(roc_results, acc_results, model_to_do_list, model_files, name_list, seed):
+    """Generates ROC AUC and accuracy plots from KFold run and saves results to a .txt file"""
+    print("\nPlotting KFold Cross Validation results...\n")
+    creation_time = str(datetime.now().strftime('%m-%d_%H:%M'))
+    kfold_dir = "kfold_" + creation_time
+
+    # create directory for kfold plots
+    os.makedirs("plots/" + kfold_dir)
+    # move model files to kfold directory
+    for f in model_files:
+        shutil.move("plots/" + f, "plots/" + kfold_dir + "/" + f)
+
+        # plot roc auc scores
+    fig = plt.figure()
+    fig.suptitle('Model Comparison with ROC AUC metric')
+    ax = fig.add_subplot(111)
+    plt.boxplot(roc_results)
+    ax.set_xticklabels(model_to_do_list)
+    fig.savefig("plots/" + kfold_dir + "/kfold_cv_roc.pdf", format="pdf", transparent=True)
+
+    # plot accuracy scores
+    fig = plt.figure()
+    fig.suptitle('Model Comparison with accuracy metric')
+    ax = fig.add_subplot(111)
+    plt.boxplot(acc_results)
+    ax.set_xticklabels(model_to_do_list)
+    fig.savefig("plots/" + kfold_dir + "/kfold_cv_acc.pdf", format="pdf", transparent=True)
+
+    # save results to file
+    f = open("plots/" + kfold_dir + "/kfold_data.txt", "w+")
+    f.write("File name list\n")
+    f.write(str(name_list))
+    f.write("\nModel list\n")
+    f.write(str(model_to_do_list))
+    f.write("\nROC AUC data\n")
+    f.write(str(roc_results))
+    f.write("\nAccuracy data\n")
+    f.write(str(acc_results))
+    f.write("\nSeed\n")
+    f.write(str(seed))
+    f.close()
+
+
+def evaluate_model(model, dir_name, X_test, y_test, weights_test, Z_test, mcWeights_test, n_folds):
+    # TODO: add doc for method + params
+    # add kfold param
+
+    # evaluate the model using Keras api
+    acc_index = model.metrics_names.index('main_output_categorical_accuracy')
+    # model.evaluate expects target data to be the same shape/format as model.fit
+    y_eval = np_utils.to_categorical(y_test) 
+    y_eval = [y_eval, y_eval, y_eval, y_eval, y_eval]
+    # get accuracy of model on test set
+    test_acc = model.evaluate(X_test, y_eval, verbose=1, sample_weight=weights_test)[acc_index]
+
+    # TODO: refactor and understand
     # make predictions
-    prediction = model.predict(X, verbose=True)
-    prediction = prediction[0]  # TODO check
+    prediction = model.predict(X_test, verbose=0)  # currently expects X to be a list of length 4 (model has 4 inputs)
+    prediction = prediction[0]  # model currently has 5 outputs (1 main output, 4 outputs for monitoring LSTMs)
 
     # Sum of MC weights
-    bib_weight = np.sum(mcWeights[y == 2])
-    sig_weight = np.sum(mcWeights[y == 1])
-    qcd_weight = np.sum(mcWeights[y == 0])
+    bib_weight = np.sum(mcWeights_test[y_test == 2])
+    sig_weight = np.sum(mcWeights_test[y_test == 1])
+    qcd_weight = np.sum(mcWeights_test[y_test == 0])
 
-    bib_weight_length = len(mcWeights[y == 2])
-    sig_weight_length = len(mcWeights[y == 1])
-    qcd_weight_length = len(mcWeights[y == 0])
+    bib_weight_length = len(mcWeights_test[y_test == 2])
+    sig_weight_length = len(mcWeights_test[y_test == 1])
+    qcd_weight_length = len(mcWeights_test[y_test == 0])
 
-    mcWeights[y == 0] *= qcd_weight_length / qcd_weight
-    mcWeights[y == 2] *= bib_weight_length / bib_weight
-    mcWeights[y == 1] *= sig_weight_length / sig_weight
+    mcWeights_test[y_test == 0] *= qcd_weight_length / qcd_weight
+    mcWeights_test[y_test == 2] *= bib_weight_length / bib_weight  # TODO: this does nothing??
+    mcWeights_test[y_test == 1] *= sig_weight_length / sig_weight
     destination = "plots/" + dir_name + "/"
-    plot_prediction_histograms(destination, prediction, y, mcWeights, dir_name)
+    # TODO: to add other plots when nfold?
+    #plot_prediction_histograms(destination, prediction, y_test, mcWeights_test, dir_name)
 
-    # This will be the BIB efficiencies to aim for when making family of ROC curves
-    threshold_array = [(1 - 0.0316)]
-    counter = 0
+    # This will be the BIB efficiency to aim for when making ROC curve
+    threshold = 1 - 0.0316
     # Third label: the label of the class we are doing a 'family' of. Other two classes will make the ROC curve
     third_label = 2
     # We'll be writing the stats to training_details.txt
     f = open(destination + "training_details.txt", "a")
+    if n_folds:
+        f.write("KFold iteration # %s" % str(n_folds))
     f.write("\nEvaluation metrics\n")
 
-    # Loop over all arrays in threshold_array
-    for item in threshold_array:
-        # Convert decimal to percentage (code used was in percentage, oh well)
-        test_perc = item * 100
-        test_label = third_label
-
-        # Find threshold, or at what label we will have the required percentage of 'test_label' correctl predicted
-        test_threshold, leftovers = find_threshold(prediction, y, mcWeights, test_perc, test_label)
-        # Make ROC curve of leftovers, those not tagged by above function
-        bkg_eff, tag_eff, roc_auc = make_multi_roc_curve(prediction, y, mcWeights, test_threshold, test_label,
-                                                         leftovers)
-        # Write AUC to training_details.txt
-        f.write("%s, %s\n" % (str(-item + 1), str(roc_auc)))
-        print("AUC: " + str(roc_auc))
-        # Make ROC curve
-        plt.plot(tag_eff, bkg_eff, label=f"BIB Eff: {item :.3f}" + f", AUC: {roc_auc:.3f}")
-        plt.xlabel("LLP Tagging Efficiency")
-        axes = plt.gca()
-        axes.set_xlim([0, 1])
-        counter = counter + 1
-
-    # Finish and plot ROC curve family
-    plt.legend()
-    plt.yscale('log', nonposy='clip')
-    signal_test = prediction[y == 1]
-    qcd_test = prediction[y == 0]
-
-    print(signal_test[0:100].shape)
-    print("Length of Signal: " + str(len(signal_test)) + ", length of signal with weight 1: " + str(
-        len(signal_test[signal_test[:, 1] < 0.1])))
-    print("Length of QCD: " + str(len(qcd_test)) + ", length of qcd with weight 1: " + str(
-        len(qcd_test[qcd_test[:, 1] < 0.1])))
-    if third_label == 2:
-        plt.ylabel("QCD Rejection")
-        plt.savefig(destination + "roc_curve_atlas_rej_bib" + ".pdf", format='pdf', transparent=True)
-    if third_label == 0:
-        plt.ylabel("BIB Rejection")
-        plt.savefig(destination + "roc_curve_atlas_rej_qcd" + ".pdf", format='pdf', transparent=True)
-    plt.clf()
-    plt.cla()
-    # Make plots of signal efficiency vs mH, mS
-    signal_llp_efficiencies(prediction, y, Z, destination, f)
-    bkg_falsePositives(prediction, y, Z, destination, f)
+    # Find threshold, or at what label we will have the required percentage of 'test_label' correctl predicted
+    test_threshold, leftovers = find_threshold(prediction, y_test, mcWeights_test, threshold * 100, third_label)
+    # Make ROC curve of leftovers, those not tagged by above function
+    bkg_eff, tag_eff, roc_auc = make_multi_roc_curve(prediction, y_test, mcWeights_test, test_threshold, third_label,
+                                                     leftovers)
+    # TODO: uncomment rest 
+    # # Write AUC to training_details.txt
+    f.write("%s, %s\n" % (str(-threshold + 1), str(roc_auc)))  # TODO: print out this is threshold and then roc_auc
+    f.write("Accuracy: %s\n" % str(test_acc)) # TODO: add spacing
+    # print("AUC: " + str(roc_auc))
+    # # Make ROC curve
+    # plt.plot(tag_eff, bkg_eff, label=f"BIB Eff: {threshold :.3f}" + f", AUC: {roc_auc:.3f}")
+    # plt.xlabel("LLP Tagging Efficiency")
+    # axes = plt.gca()
+    # axes.set_xlim([0, 1])
+    #
+    # # Finish and plot ROC curve family
+    # plt.legend()
+    # plt.yscale('log', nonposy='clip')
+    # signal_test = prediction[y_test == 1]
+    # qcd_test = prediction[y_test == 0]
+    #
+    # print(signal_test[0:100].shape)
+    # print("Length of Signal: " + str(len(signal_test)) + ", length of signal with weight 1: " + str(
+    #     len(signal_test[signal_test[:, 1] < 0.1])))
+    # print("Length of QCD: " + str(len(qcd_test)) + ", length of qcd with weight 1: " + str(
+    #     len(qcd_test[qcd_test[:, 1] < 0.1])))
+    # if third_label == 2:
+    #     plt.ylabel("QCD Rejection")
+    #     plt.savefig(destination + "roc_curve_atlas_rej_bib" + ".pdf", format='pdf', transparent=True)
+    # if third_label == 0:
+    #     plt.ylabel("BIB Rejection")
+    #     plt.savefig(destination + "roc_curve_atlas_rej_qcd" + ".pdf", format='pdf', transparent=True)
+    # plt.clf()
+    # # Make plots of signal efficiency vs mH, mS
+    # signal_llp_efficiencies(prediction, y_test, Z_test, destination, f)
+    # bkg_falsePositives(prediction, y_test, Z_test, destination, f)
     f.close()
 
+    return roc_auc, test_acc
