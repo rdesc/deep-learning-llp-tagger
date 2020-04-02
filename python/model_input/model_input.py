@@ -65,10 +65,10 @@ class ModelInput:
                                            name=self.name + '_final_conv1d')(output_tensor)
                 else:
                     output_tensor = Conv1D(filters=filters, kernel_size=1, activation=activation_cnn)(output_tensor)
-            
+
             # check if model input has only conv1d layers
             if not self.nodes_lstm:
-               output_tensor = GlobalAveragePooling1D()(output_tensor)
+                output_tensor = GlobalAveragePooling1D()(output_tensor)
 
         # check if model input has an lstm layer
         if self.nodes_lstm:
