@@ -11,6 +11,7 @@ from keras.utils import np_utils, plot_model
 from keras.callbacks import EarlyStopping, ModelCheckpoint
 from sklearn.model_selection import train_test_split, KFold
 from utils import load_dataset, create_directories, evaluate_model
+from keras import backend as K
 
 matplotlib.use('agg')
 
@@ -219,7 +220,7 @@ def build_train_evaluate_model(constit_input, track_input, MSeg_input, jet_input
     validation_data = (x_to_validate, y_to_validate, weights_to_validate)
     callbacks = [EarlyStopping(verbose=True, patience=20, monitor='val_main_output_loss'),
                  ModelCheckpoint('keras_outputs/' + dir_name + '/checkpoint', monitor='val_main_output_loss',
-                                 verbose=True, save_best_only=True)]
+                                 verbose=True, save_best_only=True), CustomCallback()]
     history = model.fit(x_to_train, y_to_train, sample_weight=weights_to_train, epochs=epochs, batch_size=batch_size,
                         validation_data=validation_data, callbacks=callbacks)
     # Save model weights
@@ -300,7 +301,7 @@ def setup_model_architecture(constit_input, track_input, MSeg_input, jet_input, 
     model = Model(inputs=layers_to_input, outputs=layers_to_output)
 
     # Setup optimiser (Nadam is good as it has decaying learning rate)
-    optimizer = keras.optimizers.Nadam(lr=learning_rate, beta_1=0.9, beta_2=0.999, epsilon=None, schedule_decay=0.004)
+    optimizer = keras.optimizers.Nadam(lr=learning_rate, beta_1=0.9, beta_2=0.999, epsilon=1e-07, schedule_decay=0.004)
 
     # Compile Model
     model.compile(optimizer=optimizer, loss='categorical_crossentropy', loss_weights=weights_for_loss,
@@ -315,3 +316,13 @@ def keras_setup():
     tf.set_random_seed(1)
     sess = tf.Session(graph=tf.get_default_graph(), config=session_conf)
     keras.backend.set_session(sess)
+
+
+class CustomCallback(keras.callbacks.Callback):
+    def on_epoch_end(self, epoch, logs=None):
+        lr = self.model.optimizer.lr
+        decay = self.model.optimizer.decay
+        iterations = self.model.optimizer.iterations
+        lr_with_decay = lr / (1. + decay * K.cast(iterations, K.dtype(decay)))
+        print(decay)
+        print(K.eval(lr_with_decay))

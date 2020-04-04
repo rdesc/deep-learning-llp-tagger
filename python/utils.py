@@ -202,7 +202,7 @@ def evaluate_model(model, dir_name, X_test, y_test, weights_test, Z_test, mcWeig
     # We'll be writing the stats to training_details.txt
     f = open(destination + "training_details.txt", "a")
     if n_folds:
-        f.write("KFold iteration # %s" % str(n_folds))
+        f.write("\nKFold iteration # %s" % str(n_folds))
     f.write("\nEvaluation metrics\n")
 
     # Find threshold, or at what label we will have the required percentage of 'test_label' correctl predicted
