@@ -5,19 +5,20 @@ from keras.regularizers import L1L2
 class ModelInput:
     """
         This is a class for inputs to the model i.e. constit, track, MSeg, jet (subclass)
+        Each of these inputs are fed into their respective layers in the model architecture
 
         Attributes:
             name (str): name of input
-            rows_max (int): number of inputs (number of rows in input data variable X)
-            num_features (int): number of features or variables (number of columns in input data variable X)
+            input_count (int): max number of inputs (e.g. jets with a max of 20 tracks)
+            vars_count (int): number of variables for each input (e.g. a track with 13 variables)
             filters_cnn (list): list of number of filters for each Conv1D layer
             nodes_lstm (int): number of nodes for lstm layer
     """
 
-    def __init__(self, name, rows_max, num_features, filters_cnn=0, nodes_lstm=0):
+    def __init__(self, name, input_count, vars_count, filters_cnn=0, nodes_lstm=0):
         self.name = name
-        self.rows_max = rows_max
-        self.num_features = num_features
+        self.rows_max = input_count
+        self.num_features = vars_count
         self.filters_cnn = filters_cnn
         self.nodes_lstm = nodes_lstm
 
@@ -34,7 +35,7 @@ class ModelInput:
         test = test.values.reshape(test.shape[0], self.rows_max, self.num_features)
 
         # print some details
-        print("Shape: %.0f x %.0f" % (train.shape[1], train.shape[2]))
+        print("Shape: %.0f x %.0f" % (train.shape[1], train.shape[2]))  # should = self.input_count x self.vars_count
         print("Number of training examples %.0f" % (train.shape[0]))
         print("Number of validating examples %.0f" % (val.shape[0]))
         print("Number of testing examples %.0f" % (test.shape[0]))

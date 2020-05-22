@@ -79,8 +79,8 @@ def train_llp(file_name, model_to_do, useGPU2, constit_input, track_input, MSeg_
     # Extract labels
     Y = df['label']
     # Use pt flattened weights from pre-processing for weights
-    weights = df['flatWeight']  # TODO: what are these weights for?
-    # Keep mcWeights TODO: what is this? for evaluation
+    weights = df['flatWeight']
+    # Keep mcWeights
     mcWeights = df['mcEventWeight']
     # Hard code start and end of names of variables
     X = df.loc[:, 'clus_pt_0':'nn_MSeg_t0_29']
@@ -262,7 +262,6 @@ def build_train_evaluate_model(constit_input, track_input, MSeg_input, jet_input
 
     # Evaluate Model with ROC curves
     print("\nEvaluating model...\n")
-    # TODO: improve doc on Z and mcWeights
     roc_auc, test_acc = evaluate_model(model, dir_name, x_to_test, y_test, weights_to_test, Z_test, mcWeights_test, n_folds)
     print('ROC area under curve: %.3f' % roc_auc)
     print('Model accuracy: %.3f' % test_acc)
@@ -295,7 +294,7 @@ def setup_model_architecture(constit_input, track_input, MSeg_input, jet_input, 
     layers_to_input = [constit_input_tensor, track_input_tensor, MSeg_input_tensor, jet_input_tensor]
     layers_to_output = [main_output_tensor, constit_dense_tensor, track_dense_tensor,
                         MSeg_dense_tensor, jet_output_tensor]
-    weights_for_loss = [1., 0.01, 0.4, 0.1, 0.01]  # TODO: ??
+    weights_for_loss = [1., 0.01, 0.4, 0.1, 0.01]
 
     # Setup Model
     model = Model(inputs=layers_to_input, outputs=layers_to_output)

@@ -7,8 +7,8 @@ class JetInput(ModelInput):
         This is a subclass for jet input to the model
     """
 
-    def __init__(self, name, rows_max=0, num_features=0, filters_cnn=0, nodes_lstm=0):
-        ModelInput.__init__(self, name, rows_max, num_features, filters_cnn, nodes_lstm)
+    def __init__(self, name, input_count=0, vars_count=0, filters_cnn=0, nodes_lstm=0):
+        ModelInput.__init__(self, name, input_count, vars_count, filters_cnn, nodes_lstm)
 
     def extract_and_split_data(self, X_train, X_val, X_test, start, end):
         train = X_train.loc[:, start:end]

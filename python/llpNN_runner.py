@@ -66,16 +66,16 @@ if args.doTraining:
                         print("\nModel: " + model_to_do)
 
                         # Initialize input objects
-                        constit_input = ModelInput(name='constit', rows_max=30, num_features=12,
+                        constit_input = ModelInput(name='constit', input_count=30, vars_count=12,
                                                    filters_cnn=filters_cnn_constit[i],
                                                    nodes_lstm=nodes_lstm_constit[i])
-                        track_input = ModelInput(name='track', rows_max=20, num_features=13,
+                        track_input = ModelInput(name='track', input_count=20, vars_count=13,
                                                  filters_cnn=filters_cnn_track[i],
                                                  nodes_lstm=nodes_track_constit[i])
-                        MSeg_input = ModelInput(name='MSeg', rows_max=30, num_features=6,
+                        MSeg_input = ModelInput(name='MSeg', input_count=30, vars_count=6,
                                                 filters_cnn=filters_cnn_MSeg[i],
                                                 nodes_lstm=nodes_MSeg_constit[i])
-                        jet_input = JetInput(name='jet', num_features=3)
+                        jet_input = JetInput(name='jet', vars_count=3)
 
                         # Train model
                         # return dirname to put in same dir as kfold
