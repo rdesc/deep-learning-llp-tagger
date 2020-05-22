@@ -220,7 +220,7 @@ def build_train_evaluate_model(constit_input, track_input, MSeg_input, jet_input
     validation_data = (x_to_validate, y_to_validate, weights_to_validate)
     callbacks = [EarlyStopping(verbose=True, patience=20, monitor='val_main_output_loss'),
                  ModelCheckpoint('keras_outputs/' + dir_name + '/checkpoint', monitor='val_main_output_loss',
-                                 verbose=True, save_best_only=True), CustomCallback()]
+                                 verbose=True, save_best_only=True)]
     history = model.fit(x_to_train, y_to_train, sample_weight=weights_to_train, epochs=epochs, batch_size=batch_size,
                         validation_data=validation_data, callbacks=callbacks)
     # Save model weights
@@ -317,12 +317,3 @@ def keras_setup():
     sess = tf.Session(graph=tf.get_default_graph(), config=session_conf)
     keras.backend.set_session(sess)
 
-
-class CustomCallback(keras.callbacks.Callback):
-    def on_epoch_end(self, epoch, logs=None):
-        lr = self.model.optimizer.lr
-        decay = self.model.optimizer.decay
-        iterations = self.model.optimizer.iterations
-        lr_with_decay = lr / (1. + decay * K.cast(iterations, K.dtype(decay)))
-        print(decay)
-        print(K.eval(lr_with_decay))
