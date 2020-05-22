@@ -65,7 +65,7 @@ def process_kfold_run(roc_results, acc_results, model_to_do_list, model_files, n
     for f in model_files:
         shutil.move("plots/" + f, "plots/" + kfold_dir + "/" + f)
 
-        # plot roc auc scores
+    # plot roc auc scores
     fig = plt.figure()
     fig.suptitle('Model Comparison with ROC AUC metric')
     ax = fig.add_subplot(111)
@@ -164,8 +164,6 @@ def process_grid_search_run(roc_results, acc_results, model_files, lr_values, re
 
 
 def evaluate_model(model, dir_name, X_test, y_test, weights_test, Z_test, mcWeights_test, n_folds):
-    # TODO: add doc for method + params, add kfold param
-
     # evaluate the model using Keras api
     acc_index = model.metrics_names.index('main_output_categorical_accuracy')
     # model.evaluate expects target data to be the same shape/format as model.fit
@@ -174,7 +172,6 @@ def evaluate_model(model, dir_name, X_test, y_test, weights_test, Z_test, mcWeig
     # get accuracy of model on test set
     test_acc = model.evaluate(X_test, y_eval, verbose=1, sample_weight=weights_test)[acc_index]
 
-    # TODO: refactor and understand
     # make predictions
     prediction = model.predict(X_test, verbose=0)  # currently expects X to be a list of length 4 (model has 4 inputs)
     prediction = prediction[0]  # model currently has 5 outputs (1 main output, 4 outputs for monitoring LSTMs)
@@ -189,10 +186,9 @@ def evaluate_model(model, dir_name, X_test, y_test, weights_test, Z_test, mcWeig
     qcd_weight_length = len(mcWeights_test[y_test == 0])
 
     mcWeights_test[y_test == 0] *= qcd_weight_length / qcd_weight
-    mcWeights_test[y_test == 2] *= bib_weight_length / bib_weight  # TODO: this does nothing??
+    mcWeights_test[y_test == 2] *= bib_weight_length / bib_weight
     mcWeights_test[y_test == 1] *= sig_weight_length / sig_weight
     destination = "plots/" + dir_name + "/"
-    # TODO: to add other plots when nfold?
     plot_prediction_histograms(destination, prediction, y_test, mcWeights_test, dir_name)
 
     # This will be the BIB efficiency to aim for when making ROC curve
@@ -210,7 +206,6 @@ def evaluate_model(model, dir_name, X_test, y_test, weights_test, Z_test, mcWeig
     # Make ROC curve of leftovers, those not tagged by above function
     bkg_eff, tag_eff, roc_auc = make_multi_roc_curve(prediction, y_test, mcWeights_test, test_threshold, third_label,
                                                      leftovers)
-    # TODO: uncomment rest 
     # Write AUC to training_details.txt
     f.write("Threshold: %s, ROC AUC: %s\n" % (str(-threshold + 1), str(roc_auc)))
     f.write("Accuracy: %s\n" % str(test_acc))
