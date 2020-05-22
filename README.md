@@ -12,13 +12,9 @@ You should have git, anaconda set up in your current shell.
 ```bash
 git clone --single-branch --branch gpu_training ssh://git@gitlab.cern.ch:7999/fcormier/llp_nn.git
 cd llp_nn/python/
-mkdir plots/
-mkdir keras_outputs/
 conda env create -f conda_train_llp.yml
 source startML1.sh
 ```
-
-
 
 ## LLPNN\_Runner
 
@@ -31,40 +27,38 @@ These are arguments input to **args.txt**.
 
 #### Training
 
-To set up for training on ml1 GPUs:
-
+The following two commands need to be executed before each training and should be added to your **~/.bashrc** file
 ```bash
-cd python/
+source ~/llp_nn/python/startML1.sh
 conda activate train_llp
-source startML1.sh
 ```
 
-Need to do this every new login. Now in **args.txt**:
-
+Now in **args.txt**:
 
 ```bash
 --doTraining
 ```
 
-On/off switch so that you run training. It runs **gridSearch_train_keras.py**, which takes as optional arguments:
+On/off switch so that you run training. It runs **deepJet_train_keras.py** (**gridSearch_train_keras.py** is the old script and is kept as backup purposes), which takes as optional arguments:
 
-* Fraction of events
-* Number of constituents input
-* Number of tracks input
-* Number of muon segments input
-* How many constituent LSTM nodes
-* How many track LSTM nodes
-* How many muon segment LSTM nodes
-* Regularization value
-* Dropout value
-* Number of epochs
-* name of model
-* True/False add tracking to training
-* True/False add muon segments to training
-* True/False do parametrized training
-* learning rate
+* file_name: Name of the .pkl file containing all the data
+* model_to_do: Name of the model
+* useGPU2: True to use GPU2
+* constit_input: ModelInput object for constituents
+* track_input: ModelInput object for tracks
+* MSeg_input: ModelInput object for muon segments
+* jet_input: ModelInput object for jets
+* plt_model: True to save model architecture to disk
+* frac: Fraction of events to use in file_name
+* batch_size: Number of training examples in one forward/backward pass
+* reg_value: Value of regularizer term for LSTM
+* dropout_value: Fraction of the input units to drop
+* epochs: Number of epochs to train the model
+* learning_rate: Learning rate
+* hidden_fraction: Fraction by which to multiple the dense layers
+* kfold: KFold object to do KFold cross validation
  
-You can edit what is input looking at **llpNN_runner.py**.
+You can edit these inputs inside **llpNN_runner.py**.
 
 ```bash
 --file_name=[path_and_name_of_file_with_data_to_train_over]
@@ -98,3 +92,16 @@ On/off flag, makes some outputs plots from the model given.
 ```
 
 Give the 'name' of the model. Typically training makes a name given variable *model_to_do* in **llpNN_runner.py** and appends some of the variables and time of creation to make a unique filename. Look for name of model under directory *keras_outputs/*.
+
+
+```bash
+--doKFold
+```
+
+Performs a KFold cross validation when this flag is added in the **args.txt** file. ROC AUC and accuracy scores are aggregated at the end of the KFold. The method *process_kfold_run* inside **utils.py** is the code that processes the KFold results.
+
+```bash
+--doGridSearch
+```
+
+Performs a grid search of the specified hyperparameters when this flag is added in the **args.txt** file. Results are processed by the method *process_grid_search_run* inside **utils.py**.
