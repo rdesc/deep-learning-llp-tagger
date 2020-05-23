@@ -1,3 +1,6 @@
-python/__pycache__/
-python/model_input/__pycache__/
-python/.idea/
+__pycache__/
+model_input/__pycache__/
+.idea/
+plots/
+keras_outputs
+*.pyc

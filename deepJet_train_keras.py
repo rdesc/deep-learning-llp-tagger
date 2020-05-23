@@ -11,7 +11,6 @@ from keras.utils import np_utils, plot_model
 from keras.callbacks import EarlyStopping, ModelCheckpoint
 from sklearn.model_selection import train_test_split, KFold
 from utils import load_dataset, create_directories, evaluate_model
-from keras import backend as K
 
 matplotlib.use('agg')
 
@@ -22,12 +21,12 @@ os.environ['openmp'] = 'True'
 os.environ['exception_verbosity'] = 'high'
 
 
-def train_llp(file_name, model_to_do, useGPU2, constit_input, track_input, MSeg_input, jet_input, plt_model=False, frac=1.0,
+def train_llp(file_name, model_name, useGPU2, constit_input, track_input, MSeg_input, jet_input, plt_model=False, frac=1.0,
               batch_size=5000, reg_value=0.001, dropout_value=0.1, epochs=50, learning_rate=0.002, hidden_fraction=1, kfold=None):
     """
     Takes in arguments to change architecture of network, does training, then runs evaluate_training
     :param file_name: Name of the .pkl file containing all the data
-    :param model_to_do: Name of the model
+    :param model_name: Name of the model
     :param useGPU2: True to use GPU2
     :param constit_input: ModelInput object for constituents
     :param track_input: ModelInput object for tracks
@@ -45,7 +44,7 @@ def train_llp(file_name, model_to_do, useGPU2, constit_input, track_input, MSeg_
     """
     # Setup directories
     print("\nSetting up directories...\n")
-    dir_name = create_directories(model_to_do, os.path.split(os.path.splitext(file_name)[0])[1])
+    dir_name = create_directories(model_name, os.path.split(os.path.splitext(file_name)[0])[1])
 
     # Write a file with some details of architecture, will append final stats at end of training
     print("\nWriting to file training details...\n")
@@ -53,7 +52,7 @@ def train_llp(file_name, model_to_do, useGPU2, constit_input, track_input, MSeg_
     f.write("File name\n")
     f.write(file_name + "\n")
     f.write("\nModel name\n")
-    f.write(model_to_do + "\n")
+    f.write(model_name + "\n")
     f.write("\nModelInput objects\n")
     f.write(str(vars(constit_input)) + "\n")
     f.write(str(vars(track_input)) + "\n")
@@ -88,8 +87,6 @@ def train_llp(file_name, model_to_do, useGPU2, constit_input, track_input, MSeg_
 
     # Label Z as parametrized variables
     Z = df.loc[:, 'llp_mH':'llp_mS']
-    # mass_array = (df.groupby(['llp_mH', 'llp_mS']).size().reset_index().rename(columns={0: 'count'}))
-    # mass_array['proportion'] = mass_array['count'] / len(df.index)  # TODO: never used??
 
     # Save memory
     del df
@@ -153,8 +150,6 @@ def build_train_evaluate_model(constit_input, track_input, MSeg_input, jet_input
     X_train = X_train.iloc[0:int(X_train.shape[0] * frac)]
     y_train = y_train.iloc[0:int(y_train.shape[0] * frac)]
     weights_train = weights_train.iloc[0:int(weights_train.shape[0] * frac)]
-    mcWeights_train = mcWeights_train.iloc[0:int(mcWeights_train.shape[0] * frac)]  # TODO: never used??
-    Z_train = Z_train.iloc[0:int(Z_train.shape[0] * frac)]  # TODO: never used??
 
     if kfold is None:
         random_state = np.random.randint(100)

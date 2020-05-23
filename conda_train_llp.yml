@@ -135,5 +135,5 @@ dependencies:
     - html5lib==0.9999999
     - tensorflow-gpu==1.12.0
     - virtualenv==16.1.0
-prefix: /home/fcormier/miniconda3/envs/train_llp
+prefix: /home/rdesc/miniconda3/envs/train_llp
 

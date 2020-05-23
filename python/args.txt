@@ -1,4 +1,0 @@
---file_name=/fast_scratch/rdesc/
---doTraining
---useGPU2
---doGridSearch

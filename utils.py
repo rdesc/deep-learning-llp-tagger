@@ -9,11 +9,11 @@ from evaluate_training import find_threshold, signal_llp_efficiencies, bkg_false
 from keras.utils import np_utils
 
 
-def create_directories(model_to_do, filename):
+def create_directories(model_name, file_name):
     """Creates directories to store model plots + Keras files and returns directory name."""
     # Append time/date to directory name
     creation_time = str(datetime.now().strftime('%Y-%m-%d_%H:%M:%S/'))
-    dir_name = model_to_do + filename + "_" + creation_time
+    dir_name = model_name + file_name + "_" + creation_time
 
     # Create directories
     os.makedirs("plots/" + dir_name)
@@ -25,10 +25,10 @@ def create_directories(model_to_do, filename):
     return dir_name
 
 
-def load_dataset(filename):
+def load_dataset(file_name):
     """Loads .pkl file, does some pre-processing and returns Pandas DataFrame"""
     # Load dataset
-    df = pd.read_pickle(filename)
+    df = pd.read_pickle(file_name)
     # Replace infs with nans
     df = df.replace([np.inf, -np.inf], np.nan)
     # Replace nans with 0
@@ -53,7 +53,7 @@ def load_dataset(filename):
     return df
 
 
-def process_kfold_run(roc_results, acc_results, model_to_do_list, model_files, name_list, seed):
+def process_kfold_run(roc_results, acc_results, model_names, model_file_names, name_list, seed):
     """Generates ROC AUC and accuracy plots from KFold run and saves results to a .txt file"""
     print("\nPlotting KFold Cross Validation results...\n")
     creation_time = str(datetime.now().strftime('%m-%d_%H:%M'))
@@ -62,7 +62,7 @@ def process_kfold_run(roc_results, acc_results, model_to_do_list, model_files, n
     # create directory for kfold plots
     os.makedirs("plots/" + kfold_dir)
     # move model files to kfold directory
-    for f in model_files:
+    for f in model_file_names:
         shutil.move("plots/" + f, "plots/" + kfold_dir + "/" + f)
 
     # plot roc auc scores
@@ -71,7 +71,7 @@ def process_kfold_run(roc_results, acc_results, model_to_do_list, model_files, n
     ax = fig.add_subplot(111)
     ax.yaxis.grid(True)
     plt.boxplot(roc_results)
-    ax.set_xticklabels(model_to_do_list)
+    ax.set_xticklabels(model_names)
     fig.savefig("plots/" + kfold_dir + "/kfold_cv_roc.pdf", format="pdf", transparent=True)
 
     # plot accuracy scores
@@ -80,7 +80,7 @@ def process_kfold_run(roc_results, acc_results, model_to_do_list, model_files, n
     ax = fig.add_subplot(111)
     ax.yaxis.grid(True)
     plt.boxplot(acc_results)
-    ax.set_xticklabels(model_to_do_list)
+    ax.set_xticklabels(model_names)
     fig.savefig("plots/" + kfold_dir + "/kfold_cv_acc.pdf", format="pdf", transparent=True)
 
     # save results to file
@@ -88,7 +88,7 @@ def process_kfold_run(roc_results, acc_results, model_to_do_list, model_files, n
     f.write("File name list\n")
     f.write(str(name_list))
     f.write("\nModel list\n")
-    f.write(str(model_to_do_list))
+    f.write(str(model_names))
     f.write("\nROC AUC data\n")
     f.write(str(roc_results))
     f.write("\nAccuracy data\n")
@@ -98,13 +98,13 @@ def process_kfold_run(roc_results, acc_results, model_to_do_list, model_files, n
     f.close()
 
 
-def process_grid_search_run(roc_results, acc_results, model_files, lr_values, reg_values, filters_cnn_constit, filters_cnn_track, filters_cnn_MSeg):
+def process_grid_search_run(roc_results, acc_results, model_file_names, lr_values, reg_values, filters_cnn_constit, filters_cnn_track, filters_cnn_MSeg):
     """Aggregates model files and metrics built during grid search"""
     print("\nProcessing grid search results...\n")
     creation_time = str(datetime.now().strftime('%m-%d_%H:%M'))
     gridSearch_dir = "gridSearch_" + creation_time
-    print("\nSuccessfully trained %.0f models\n" % len(model_files))
-    for f in model_files:
+    print("\nSuccessfully trained %.0f models\n" % len(model_file_names))
+    for f in model_file_names:
         shutil.move("plots/" + f, "plots/" + gridSearch_dir + "/" + f)
 
     # find the ordering based on model metric
@@ -143,7 +143,7 @@ def process_grid_search_run(roc_results, acc_results, model_files, lr_values, re
     # save results to file
     f = open("plots/" + gridSearch_dir + "/gridSearch_data.txt", "w+")
     f.write("Model list\n")
-    f.write(str(model_files))
+    f.write(str(model_file_names))
     f.write("\n\nROC AUC data\n")
     f.write(str(roc_results))
     f.write("\n\nAccuracy data\n")
@@ -189,7 +189,7 @@ def evaluate_model(model, dir_name, X_test, y_test, weights_test, Z_test, mcWeig
     mcWeights_test[y_test == 2] *= bib_weight_length / bib_weight
     mcWeights_test[y_test == 1] *= sig_weight_length / sig_weight
     destination = "plots/" + dir_name + "/"
-    plot_prediction_histograms(destination, prediction, y_test, mcWeights_test, dir_name)
+    plot_prediction_histograms(destination, prediction, y_test, mcWeights_test)
 
     # This will be the BIB efficiency to aim for when making ROC curve
     threshold = 1 - 0.0316
@@ -202,7 +202,7 @@ def evaluate_model(model, dir_name, X_test, y_test, weights_test, Z_test, mcWeig
     f.write("\nEvaluation metrics\n")
 
     # Find threshold, or at what label we will have the required percentage of 'test_label' correctl predicted
-    test_threshold, leftovers = find_threshold(prediction, y_test, mcWeights_test, threshold * 100, third_label)
+    test_threshold, leftovers = find_threshold(prediction, y_test, threshold * 100, third_label)
     # Make ROC curve of leftovers, those not tagged by above function
     bkg_eff, tag_eff, roc_auc = make_multi_roc_curve(prediction, y_test, mcWeights_test, test_threshold, third_label,
                                                      leftovers)
