@@ -12,4 +12,5 @@ I modified the preprocessing step [here](https://github.com/rdesc/deep-learning-
 Results from a KFold cross validation showed both the models trained with ascending and descending datasets performing better than the model trained with random datasets.
 
 ## Main Contribution
-Below is the proposed model architecture. The modifications to the original model are the 1x1 Convolutional layers feeding their output into the LSTMs. 
+Below is the proposed model architecture. The modifications to the original model are the 1x1 Convolutional layers.
+![](https://github.com/rdesc/deep-learning-llp-tagger/blob/master/thesis_files/new_arch.png)
