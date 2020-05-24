@@ -12,5 +12,12 @@ I modified the preprocessing step [here](https://github.com/rdesc/deep-learning-
 Results from a KFold cross validation showed both the models trained with ascending and descending datasets performing better than the model trained with random datasets.
 
 ## Main Contribution
-Below is the proposed model architecture. The modifications to the original model are the 1x1 Convolutional layers.
+Below is the proposed model architecture which builds off a recurrent deep network.
 ![](https://github.com/rdesc/deep-learning-llp-tagger/blob/master/thesis_files/new_arch.png)
+
+A hyperparameter grid search was performed to optimize the modified model architecture. Below is a comparison between the proposed model and the previous model. The proposed network attained a relative improvement of 10% in ROC AUC in comparison to the original model. My full thesis report which describes the project in detail can be found here.
+
+| Model  | ROC AUC | Accuracy |
+| ------------- | ------------- | ------------- |
+| Proposed model  |  0.96  |  0.97  |
+| Previous model | 0.87 | 0.94 |
