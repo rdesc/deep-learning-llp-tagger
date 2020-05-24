@@ -7,6 +7,7 @@ from model_input.model_input import ModelInput
 from sklearn.model_selection import StratifiedKFold
 from utils import process_kfold_run, process_grid_search_run
 
+# parse arguments from args.txt
 parser = argparse.ArgumentParser(fromfile_prefix_chars='@')
 parser.add_argument('--data_dir')
 parser.add_argument('--useGPU2', action="store_true")
@@ -14,10 +15,12 @@ parser.add_argument('--doKFold', action="store_true")
 parser.add_argument('--doGridSearch', action="store_true")
 args = parser.parse_args(['--data_dir', 'foo', '@args.txt'])
 
+# specify file names that are inside the directory "--data_dir"
 file_names = ["processed_output_Lxy1500_Lz3000.pkl"]
+# names to label models
 model_names = ["lstm_", "conv1D_", "lstm_conv1D_"]
 
-# model hyper-parameters
+# model hyperparameters
 filters_cnn_constit = [0, [64, 32, 32, 8], [64, 32, 32, 8]]
 filters_cnn_track = [0, [64, 32, 32, 8], [64, 32, 32, 8]]
 filters_cnn_MSeg = [0, [32, 16, 4], [32, 16, 4]]
@@ -25,7 +28,7 @@ nodes_lstm_constit = [60, 0, 60]
 nodes_track_constit = [60, 0, 60]
 nodes_MSeg_constit = [25, 0, 25]
 
-# other hyper-parameters
+# other hyperparameters
 lr_values = [0.00005, 0.000025, 0.0001, 0.0002, 0.0004]
 frac_list = [0.2, 0.4, 0.6, 0.8]
 layers_list = [1, 2]
@@ -35,7 +38,9 @@ reg_values = [0.005, 0.0025, 0.001, 0.01]
 
 
 def init_training(file_name, model, constit_input, track_input, MSeg_input, jet_input, lr=0.0004, reg=0.001, kfold=None):
-    # Train model
+    """
+    Helper function to start training
+    """
     roc_scores, acc_scores, dir_name = train_llp(file_name, model, args.useGPU2, constit_input, track_input, MSeg_input,
                                                  jet_input, frac=1.0, plt_model=True, learning_rate=lr, hidden_fraction=2,
                                                  epochs=100, dropout_value=0.2, reg_value=reg, kfold=kfold)
@@ -49,7 +54,6 @@ def init_training(file_name, model, constit_input, track_input, MSeg_input, jet_
 
 
 if __name__ == '__main__':
-
     # initialize variables to store metrics
     roc_results = []
     acc_results = []
@@ -82,9 +86,11 @@ if __name__ == '__main__':
                 acc_results.append(acc_scores)
                 model_files.append(dir_name)
 
+            # process and save the results of the completed KFold
             process_kfold_run(roc_results, acc_results, model_names, model_files, file_names, seed)
 
         elif args.doGridSearch:
+            # iterate through all the possible hyperparameter configurations
             for model in model_names:
                 for lr in lr_values:
                     for reg in reg_values:
@@ -107,10 +113,11 @@ if __name__ == '__main__':
                             acc_results.append(acc_scores)
                             model_files.append(dir_name)
 
+            # process and save the results of the completed Grid Search
             process_grid_search_run(roc_results, acc_results, model_files, lr_values, reg_values, filters_cnn_constit, filters_cnn_track, filters_cnn_MSeg)
 
         else:
-            # no KFold or grid search just do standard training
+            # no KFold or grid search, just do standard training
             model = "lstm_conv1D_"
             print("\nModel: " + model)
 
