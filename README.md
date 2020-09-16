@@ -12,11 +12,11 @@ I modified the preprocessing step [here](https://github.com/rdesc/deep-learning-
 Results from a KFold cross validation showed the models trained with the ascending and descending pT ordered datasets performed better than the model trained with the random pT ordered dataset.
 
 ## Main Contribution
-Below is the proposed model architecture which builds off a recurrent deep network. In comparison to the previous architecture, the input layers now feed into 1D convolutional (Conv1D) filters with kernel size 1 instead of LSTM layers. These Conv1D layers perform global feature extraction and dimensionality reduction, without a spatial aspect since these filters (with kernel size 1) capture a single row at a time. As a result of the addition of these layers, highly discriminating and compressed features are fed into the LSTMs.
+Below is the proposed model architecture which builds off a recurrent deep network. In comparison to the previous architecture, instead of feeding directly into the LSTM layers the input layers now feed into 1D convolutional (Conv1D) filters with kernel size 1. These Conv1D layers perform global feature extraction and dimensionality reduction, without a spatial aspect since these filters (with kernel size 1) capture a single row at a time. As a result of the addition of these layers, highly discriminating and compressed features are fed into the LSTMs.
 
 ![](https://github.com/rdesc/deep-learning-llp-tagger/blob/master/thesis_files/new_arch.png)
 
-A hyperparameter grid search was performed to optimize the modified model architecture. Below is a comparison between the proposed model and the previous model. The proposed network attained a relative improvement of 10% in ROC AUC in comparison to the original model. My full thesis report which describes the project in detail can be found here.
+A hyperparameter grid search was performed to optimize the modified model architecture. Below is a comparison between the proposed model and the previous model. The proposed network attained a relative improvement of 10% in ROC AUC in comparison to the original model. My full thesis report which describes the project in detail can be found archived on the [UBC online library](https://dx.doi.org/10.14288/1.0394306).
 
 | Model  | ROC AUC | Accuracy |
 | ------------- | ------------- | ------------- |
