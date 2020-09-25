@@ -12,7 +12,7 @@ I modified the preprocessing step [here](https://github.com/rdesc/deep-learning-
 Results from a KFold cross validation showed the models trained with the ascending and descending pT ordered datasets performed better than the model trained with the random pT ordered dataset.
 
 ## Main Contribution
-Below is the proposed model architecture which builds off a recurrent deep network. In comparison to the previous architecture, instead of feeding directly into the LSTM layers the input layers now feed into 1D convolutional (Conv1D) filters with kernel size 1. These Conv1D layers perform global feature extraction and dimensionality reduction, without a spatial aspect since these filters (with kernel size 1) capture a single row at a time. As a result of the addition of these layers, highly discriminating and compressed features are fed into the LSTMs.
+Below is the proposed model architecture which builds off a recurrent deep network. In comparison to the previous architecture, input layers feed into 1D convolutional (Conv1D) filters with kernel size 1 instead of feeding into LSTMs. These Conv1D layers perform global feature extraction and dimensionality reduction, without a spatial aspect since these filters (with kernel size 1) capture a single row at a time. As a result of the addition of these layers, highly discriminating and compressed features are fed into the LSTMs.
 
 ![](https://github.com/rdesc/deep-learning-llp-tagger/blob/master/thesis_files/new_arch.png)
 
